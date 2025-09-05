@@ -145,7 +145,7 @@ CREATE TABLE user_ratings (
     item_type ENUM('material', 'paper') NOT NULL,
     item_id BIGINT NOT NULL,
     rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
-    comment TEXT,
+    review TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     
@@ -154,24 +154,6 @@ CREATE TABLE user_ratings (
     INDEX idx_item_type_id (item_type, item_id),
     INDEX idx_rating (rating),
     UNIQUE KEY unique_user_rating (user_id, item_type, item_id)
-);
-
--- 评论表
-CREATE TABLE comments (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    user_id BIGINT NOT NULL,
-    course_id BIGINT NOT NULL,
-    parent_id BIGINT, -- 用于回复评论
-    content TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
-    FOREIGN KEY (parent_id) REFERENCES comments(id) ON DELETE CASCADE,
-    INDEX idx_user_id (user_id),
-    INDEX idx_course_id (course_id),
-    INDEX idx_parent_id (parent_id)
 );
 
 -- 下载记录表
