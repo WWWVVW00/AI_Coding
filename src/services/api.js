@@ -1,28 +1,121 @@
-// Mock API 服務
+// Mock API 服務 - 使用localStorage模拟数据库
 const mockApiCall = (data, success = true, delay = 500) => 
   new Promise(resolve => setTimeout(() => resolve({ success, ...data }), delay));
 
+// 用户数据管理
+const getUserData = () => {
+  const users = JSON.parse(localStorage.getItem('users') || '[]');
+  return users;
+};
+
+const saveUserData = (users) => {
+  localStorage.setItem('users', JSON.stringify(users));
+};
+
+const getCurrentUserFromToken = () => {
+  const token = localStorage.getItem('token');
+  if (!token) return null;
+  
+  const users = getUserData();
+  const userId = localStorage.getItem('currentUserId');
+  return users.find(user => user.id.toString() === userId);
+};
+
+// 课程数据管理
+const getUserCourses = (userId) => {
+  const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+  return courses.filter(course => course.userId === userId);
+};
+
+const saveCourse = (course) => {
+  const courses = JSON.parse(localStorage.getItem('courses') || '[]');
+  courses.push(course);
+  localStorage.setItem('courses', JSON.stringify(courses));
+};
+
 export const authAPI = {
-  getCurrentUser: () => mockApiCall({ data: { id: 1, username: 'testuser', fullName: '測試用戶' } }),
-  login: (username, password) => mockApiCall({ token: 'fake-token', user: { id: 1, username, fullName: '測試用戶' } }),
-  register: (username, email, password, fullName) => mockApiCall({ message: '註冊成功' }),
+  getCurrentUser: () => {
+    const user = getCurrentUserFromToken();
+    if (user) {
+      return mockApiCall({ data: user });
+    } else {
+      return Promise.reject(new Error('用户未登录'));
+    }
+  },
+  
+  login: (username, password) => {
+    const users = getUserData();
+    const user = users.find(u => u.username === username && u.password === password);
+    
+    if (user) {
+      localStorage.setItem('token', 'fake-token-' + user.id);
+      localStorage.setItem('currentUserId', user.id.toString());
+      return mockApiCall({ 
+        token: 'fake-token-' + user.id, 
+        user: { id: user.id, username: user.username, fullName: user.fullName } 
+      });
+    } else {
+      return mockApiCall({ message: '用户名或密码错误' }, false);
+    }
+  },
+  
+  register: (username, email, password, fullName) => {
+    const users = getUserData();
+    
+    // 检查用户名是否已存在
+    if (users.find(u => u.username === username)) {
+      return mockApiCall({ message: '用户名已存在' }, false);
+    }
+    
+    // 检查邮箱是否已存在
+    if (users.find(u => u.email === email)) {
+      return mockApiCall({ message: '邮箱已被注册' }, false);
+    }
+    
+    // 创建新用户
+    const newUser = {
+      id: Date.now(),
+      username,
+      email,
+      password,
+      fullName,
+      createdAt: new Date().toISOString()
+    };
+    
+    users.push(newUser);
+    saveUserData(users);
+    
+    return mockApiCall({ message: '註冊成功' });
+  },
 };
 
 export const coursesAPI = {
-  getAll: () => mockApiCall({ 
-    data: [{ 
-      id: 1, 
-      name: '線性代數', 
-      code: 'MATH101', 
-      department: '數學系', 
-      description: '基礎線性代數課程', 
-      credits: 3, 
-      semester: 'Fall', 
-      year: 2023, 
-      instructor: '陳教授' 
-    }] 
-  }),
-  create: (course) => mockApiCall({ data: { ...course, id: Date.now() } }),
+  getAll: () => {
+    const currentUser = getCurrentUserFromToken();
+    if (!currentUser) {
+      return mockApiCall({ data: [] });
+    }
+    
+    const userCourses = getUserCourses(currentUser.id);
+    return mockApiCall({ data: userCourses });
+  },
+  
+  create: (course) => {
+    const currentUser = getCurrentUserFromToken();
+    if (!currentUser) {
+      return mockApiCall({ message: '用户未登录' }, false);
+    }
+    
+    const newCourse = {
+      ...course,
+      id: Date.now(),
+      userId: currentUser.id,
+      createdAt: new Date().toISOString()
+    };
+    
+    saveCourse(newCourse);
+    return mockApiCall({ data: newCourse });
+  },
 };
 
 export const materialsAPI = {

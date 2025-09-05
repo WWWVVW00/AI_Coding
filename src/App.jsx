@@ -6,6 +6,8 @@ import Navigation from './components/layout/Navigation';
 import LoginView from './components/views/LoginView';
 import HomeView from './components/views/HomeView';
 import CoursesView from './components/views/CoursesView';
+import CourseDetailView from './components/views/CourseDetailView';
+import ForumView from './components/views/ForumView';
 import AddCourseModal from './components/modals/AddCourseModal';
 
 // 導入自定義鉤子
@@ -23,6 +25,25 @@ function StudyAssistant() {
   useEffect(() => {
     initializeApp();
   }, []);
+
+  // 当用户认证状态改变时重新加载数据
+  useEffect(() => {
+    if (auth.isAuthenticated && auth.user) {
+      loadUserData();
+    }
+  }, [auth.isAuthenticated, auth.user]);
+
+  const loadUserData = async () => {
+    try {
+      await Promise.all([
+        courses.loadCourses(),
+        app.loadMaterials(),
+        app.loadPapers()
+      ]);
+    } catch (error) {
+      console.error('加载用户数据失败:', error);
+    }
+  };
 
   const initializeApp = async () => {
     try {
@@ -115,6 +136,17 @@ function StudyAssistant() {
             setSelectedCourse={courses.setSelectedCourse}
             setCurrentView={app.setCurrentView}
           />
+        )}
+        
+        {app.currentView === 'course-detail' && (
+          <CourseDetailView 
+            course={courses.selectedCourse}
+            setCurrentView={app.setCurrentView}
+          />
+        )}
+
+        {app.currentView === 'forum' && (
+          <ForumView />
         )}
         
         {/* 其他視圖可以在這裡添加 */}

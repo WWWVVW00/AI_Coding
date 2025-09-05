@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, FileText, Brain, Zap, Upload } from 'lucide-react';
+import { BookOpen, FileText, Brain, Zap, Upload, Users } from 'lucide-react';
 
 function HomeView({ 
   user, 
@@ -68,16 +68,16 @@ function HomeView({
         </button>
 
         <button 
-          onClick={() => setCurrentView('papers')} 
+          onClick={() => setCurrentView('forum')} 
           className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-200 text-left"
         >
           <div className="flex items-center mb-4">
-            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-              <Brain className="h-6 w-6 text-purple-600" />
+            <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+              <Users className="h-6 w-6 text-yellow-600" />
             </div>
-            <h3 className="ml-4 text-lg font-semibold text-gray-800">查看試卷</h3>
+            <h3 className="ml-4 text-lg font-semibold text-gray-800">课程交流区</h3>
           </div>
-          <p className="text-gray-600">查看和管理您生成的智能試卷</p>
+          <p className="text-gray-600">与其他同学交流课程心得和问题</p>
         </button>
       </div>
 

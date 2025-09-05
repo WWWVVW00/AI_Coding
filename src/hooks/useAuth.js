@@ -53,6 +53,8 @@ export function useAuth() {
       const response = await authAPI.login(loginForm.username, loginForm.password);
 
       if (response.success) {
+        // 保存token到localStorage
+        localStorage.setItem('token', response.token);
         setUser(response.user);
         setIsAuthenticated(true);
         setShowLogin(false);
