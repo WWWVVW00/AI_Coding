@@ -18,6 +18,7 @@ const statsRoutes = require('./routes/stats');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+app.set('trust proxy', 1);
 
 // 创建必要的目录
 async function createDirectories() {
