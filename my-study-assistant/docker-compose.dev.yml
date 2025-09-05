@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  # MySQL 数据库 (开发环境)
+  database:
+    image: mysql:8.0
+    container_name: study-assistant-db-dev
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: admin123456
+      MYSQL_DATABASE: study_assistant
+      MYSQL_USER: app_user
+      MYSQL_PASSWORD: app_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_dev_data:/var/lib/mysql
+      - ./database:/docker-entrypoint-initdb.d
+    networks:
+      - study-assistant-dev-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # 后端 API 服务 (开发模式)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: study-assistant-backend-dev
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=database
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=admin123456
+      - DB_NAME=study_assistant
+      - JWT_SECRET=dev_jwt_secret_key_for_development_only
+      - JWT_EXPIRES_IN=7d
+      - PORT=3001
+      - UPLOAD_DIR=./uploads
+      - MAX_FILE_SIZE=50MB
+      - LOG_LEVEL=debug
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - backend_dev_uploads:/app/uploads
+      - backend_dev_logs:/app/logs
+    networks:
+      - study-assistant-dev-network
+    depends_on:
+      database:
+        condition: service_healthy
+    command: ["npm", "run", "dev"]
+
+  # 前端应用 (开发模式)
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: study-assistant-frontend-dev
+    restart: unless-stopped
+    environment:
+      - VITE_API_URL=http://localhost:3001
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    networks:
+      - study-assistant-dev-network
+    depends_on:
+      - backend
+
+volumes:
+  mysql_dev_data:
+    driver: local
+  backend_dev_uploads:
+    driver: local
+  backend_dev_logs:
+    driver: local
+
+networks:
+  study-assistant-dev-network:
+    driver: bridge
