@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Search, Upload, FileText, Share2, Download, Users, MessageCircle, Eye, EyeOff, ChevronRight, BookOpen, Brain, Zap, Globe, Languages, FileDown, List, AlertCircle, CheckCircle, X } from 'lucide-react';
 import schoolLogo from './assets/school-logo.svg';
 import { coursesAPI, materialsAPI, papersAPI, usersAPI, authAPI, utils } from './services/api';
@@ -53,6 +53,42 @@ function StudyAssistant() {
   });
 
   const fileInputRef = useRef(null);
+
+  // 优化的事件处理函数
+  const handleUsernameChange = useCallback((e) => {
+    const value = e.target.value;
+    setLoginForm(prev => ({ ...prev, username: value }));
+  }, []);
+
+  const handlePasswordChange = useCallback((e) => {
+    const value = e.target.value;
+    setLoginForm(prev => ({ ...prev, password: value }));
+  }, []);
+
+  const handleRegisterUsernameChange = useCallback((e) => {
+    const value = e.target.value;
+    setRegisterForm(prev => ({ ...prev, username: value }));
+  }, []);
+
+  const handleRegisterEmailChange = useCallback((e) => {
+    const value = e.target.value;
+    setRegisterForm(prev => ({ ...prev, email: value }));
+  }, []);
+
+  const handleRegisterFullNameChange = useCallback((e) => {
+    const value = e.target.value;
+    setRegisterForm(prev => ({ ...prev, fullName: value }));
+  }, []);
+
+  const handleRegisterPasswordChange = useCallback((e) => {
+    const value = e.target.value;
+    setRegisterForm(prev => ({ ...prev, password: value }));
+  }, []);
+
+  const handleSearchChange = useCallback((e) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+  }, []);
 
   // 初始化应用
   useEffect(() => {
@@ -488,7 +524,7 @@ function StudyAssistant() {
   );
 
   // 登录模态框
-  const LoginModal = () => (
+  const LoginModal = React.memo(() => (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
         <div className="flex items-center justify-between mb-6">
@@ -502,22 +538,26 @@ function StudyAssistant() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">用户名</label>
             <input
+              key="login-username"
               type="text"
               value={loginForm.username}
-              onChange={(e) => setLoginForm(prev => ({ ...prev, username: e.target.value }))}
+              onChange={handleUsernameChange}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               required
+              autoComplete="username"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">密码</label>
             <input
+              key="login-password"
               type="password"
               value={loginForm.password}
-              onChange={(e) => setLoginForm(prev => ({ ...prev, password: e.target.value }))}
+              onChange={handlePasswordChange}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               required
+              autoComplete="current-password"
             />
           </div>
 
@@ -552,7 +592,7 @@ function StudyAssistant() {
         </div>
       </div>
     </div>
-  );
+  ));
 
   // 注册模态框
   const RegisterModal = () => (
@@ -571,9 +611,10 @@ function StudyAssistant() {
             <input
               type="text"
               value={registerForm.username}
-              onChange={(e) => setRegisterForm(prev => ({ ...prev, username: e.target.value }))}
+              onChange={handleRegisterUsernameChange}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               required
+              autoComplete="username"
             />
           </div>
 
@@ -582,9 +623,10 @@ function StudyAssistant() {
             <input
               type="email"
               value={registerForm.email}
-              onChange={(e) => setRegisterForm(prev => ({ ...prev, email: e.target.value }))}
+              onChange={handleRegisterEmailChange}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               required
+              autoComplete="email"
             />
           </div>
 
@@ -593,9 +635,10 @@ function StudyAssistant() {
             <input
               type="text"
               value={registerForm.fullName}
-              onChange={(e) => setRegisterForm(prev => ({ ...prev, fullName: e.target.value }))}
+              onChange={handleRegisterFullNameChange}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               required
+              autoComplete="name"
             />
           </div>
 
@@ -604,9 +647,10 @@ function StudyAssistant() {
             <input
               type="password"
               value={registerForm.password}
-              onChange={(e) => setRegisterForm(prev => ({ ...prev, password: e.target.value }))}
+              onChange={handleRegisterPasswordChange}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               required
+              autoComplete="new-password"
             />
           </div>
 
@@ -782,7 +826,7 @@ function StudyAssistant() {
               placeholder="搜索课程..."
               className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={handleSearchChange}
             />
           </div>
 
@@ -872,7 +916,10 @@ function StudyAssistant() {
                     <input
                       type="text"
                       value={newCourse.name}
-                      onChange={(e) => setNewCourse(prev => ({ ...prev, name: e.target.value }))}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setNewCourse(prev => ({ ...prev, name: value }));
+                      }}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="例如：机器学习导论"
                       required
@@ -886,7 +933,10 @@ function StudyAssistant() {
                     <input
                       type="text"
                       value={newCourse.code}
-                      onChange={(e) => setNewCourse(prev => ({ ...prev, code: e.target.value }))}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setNewCourse(prev => ({ ...prev, code: value }));
+                      }}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="例如：CS401"
                       required
@@ -898,7 +948,10 @@ function StudyAssistant() {
                     <input
                       type="text"
                       value={newCourse.department}
-                      onChange={(e) => setNewCourse(prev => ({ ...prev, department: e.target.value }))}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setNewCourse(prev => ({ ...prev, department: value }));
+                      }}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="例如：计算机科学系"
                     />
@@ -908,7 +961,10 @@ function StudyAssistant() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">课程描述</label>
                     <textarea
                       value={newCourse.description}
-                      onChange={(e) => setNewCourse(prev => ({ ...prev, description: e.target.value }))}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setNewCourse(prev => ({ ...prev, description: value }));
+                      }}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       rows="3"
                       placeholder="简单描述这门课程的内容和特点..."

@@ -1,6 +1,6 @@
 // API服务层 - 处理所有后端API调用
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 // API请求工具函数
 class ApiService {
