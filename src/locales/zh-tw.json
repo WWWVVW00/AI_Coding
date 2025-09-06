@@ -1,0 +1,84 @@
+{
+  "nav": {
+    "title": "智能學習助手",
+    "home": "首頁",
+    "courses": "課程",
+    "forum": "論壇",
+    "logout": "登出"
+  },
+  "home": {
+    "welcome": "歡迎回來，{name}！",
+    "subtitle": "開始您的智能學習之旅",
+    "courseCount": "{count} 門課程",
+    "materialCount": "{count} 個資料",
+    "paperCount": "{count} 份試卷",
+    "addCourse": "新增課程",
+    "addCourseDesc": "建立新的課程來組織您的學習資料",
+    "uploadMaterial": "上傳資料",
+    "uploadMaterialDesc": "上傳學習資料，為智能試卷生成做準備",
+    "forum": "課程交流區",
+    "forumDesc": "與其他同學交流課程心得和問題",
+    "recentCourses": "最近課程",
+    "credits": "{count} 學分",
+    "noCourses": "還沒有課程，點擊上方「新增課程」開始吧！"
+  },
+  "courses": {
+    "title": "我的課程",
+    "subtitle": "管理您的所有課程和學習資料",
+    "searchPlaceholder": "搜尋課程...",
+    "addCourse": "新增課程",
+    "noResults": "沒有找到符合的課程",
+    "noResultsDesc": "嘗試使用不同的關鍵詞搜尋",
+    "noCourses": "還沒有課程",
+    "noCoursesDesc": "新增您的第一門課程開始學習之旅"
+  },
+  "courseCard": {
+    "materialCount": "{count} 個學習材料",
+    "studentCount": "{count} 名學生"
+  },
+  "common": {
+    "translated": "已翻譯",
+    "save": "儲存",
+    "cancel": "取消",
+    "close": "關閉",
+    "delete": "刪除",
+    "edit": "編輯",
+    "add": "新增"
+  },
+  "addCourseModal": {
+    "title": "新增課程",
+    "editTitle": "編輯課程",
+    "name": "課程名稱",
+    "namePlaceholder": "例如：人工智能",
+    "code": "課程代碼",
+    "codePlaceholder": "例如：CS101",
+    "department": "開課院系",
+    "departmentPlaceholder": "例如：計算機科學系",
+    "instructor": "授課教師",
+    "instructorPlaceholder": "例如：王老師",
+    "credits": "學分",
+    "creditsPlaceholder": "例如：3",
+    "semester": "學期",
+    "year": "學年",
+    "description": "課程描述",
+    "descriptionPlaceholder": "輸入課程的簡要描述",
+    "spring": "春季",
+    "summer": "夏季",
+    "fall": "秋季",
+    "winter": "冬季",
+    "adding": "新增中...",
+    "addCourseButton": "新增課程"
+  },
+  "forum": {
+    "title": "課程交流區",
+    "subtitle": "此功能正在建設中。",
+    "comingSoon": "敬請期待一個可以自由交流課程心得、分享資料和提問的社群！"
+  },
+  "courseDetail": {
+    "backToCourses": "返回課程列表",
+    "overview": "課程概覽",
+    "materials": "學習資料",
+    "papers": "共享試卷",
+    "comments": "評論"
+  }
+}

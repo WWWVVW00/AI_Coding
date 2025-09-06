@@ -1,13 +1,53 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, BookOpen, Calendar, User, Hash, GraduationCap, Upload, FileText, Brain, MessageCircle, Star, Download } from 'lucide-react';
+import { useTranslation } from '../../contexts/TranslationContext';
 
 function CourseDetailView({ course, setCurrentView }) {
+  const { t, translateDynamic, currentLanguage } = useTranslation();
   const [activeTab, setActiveTab] = useState('overview');
   const [materials, setMaterials] = useState([]);
   const [sharedPapers, setSharedPapers] = useState([]);
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [newComment, setNewComment] = useState('');
+  const [displayCourse, setDisplayCourse] = useState(course);
+
+  // 翻译动态课程内容
+  useEffect(() => {
+    if (!course) return;
+
+    // 如果目标语言是源语言(简体中文)，则直接显示原始数据，避免不必要的翻译
+    if (currentLanguage === 'zh-cn') {
+      setDisplayCourse(course);
+      return;
+    }
+
+    const translateCourseData = async () => {
+      try {
+        const fieldsToTranslate = {
+          name: course.name,
+          description: course.description,
+        };
+
+        if (course.instructor) {
+          fieldsToTranslate.instructor = course.instructor;
+        }
+
+        const translated = await translateDynamic(fieldsToTranslate);
+        
+        // 使用 course prop 作为基础，并合并翻译后的字段
+        setDisplayCourse({ ...course, ...translated });
+
+      } catch (error) {
+        console.error("Failed to translate course details:", error);
+        // 翻译失败则回退到原始数据
+        setDisplayCourse(course);
+      }
+    };
+
+    translateCourseData();
+  }, [course, currentLanguage, translateDynamic]);
+
 
   // 加载课程相关数据
   useEffect(() => {
@@ -41,7 +81,7 @@ function CourseDetailView({ course, setCurrentView }) {
         setComments(commentsData.data || []);
       }
     } catch (error) {
-      console.error('加载课程数据失败:', error);
+      console.error(t('courseDetail.error.load'), error);
     } finally {
       setLoading(false);
     }
@@ -71,10 +111,10 @@ function CourseDetailView({ course, setCurrentView }) {
         await loadCourseData(); // 重新加载数据
         event.target.value = ''; // 清空文件选择
       } else {
-        console.error('文件上传失败');
+        console.error(t('courseDetail.error.upload'));
       }
     } catch (error) {
-      console.error('文件上传错误:', error);
+      console.error(t('courseDetail.error.uploadError'), error);
     } finally {
       setLoading(false);
     }
@@ -82,7 +122,7 @@ function CourseDetailView({ course, setCurrentView }) {
 
   const handleGeneratePaper = async () => {
     if (materials.length === 0) {
-      alert('请先上传学习资料');
+      alert(t('courseDetail.overview.alertNoMaterials'));
       return;
     }
 
@@ -103,10 +143,10 @@ function CourseDetailView({ course, setCurrentView }) {
       if (response.ok) {
         await loadCourseData(); // 重新加载数据
       } else {
-        console.error('试卷生成失败');
+        console.error(t('courseDetail.error.generate'));
       }
     } catch (error) {
-      console.error('试卷生成错误:', error);
+      console.error(t('courseDetail.error.generateError'), error);
     } finally {
       setLoading(false);
     }
@@ -133,22 +173,22 @@ function CourseDetailView({ course, setCurrentView }) {
         await loadCourseData(); // 重新加载评论
       }
     } catch (error) {
-      console.error('添加评论失败:', error);
+      console.error(t('courseDetail.error.addComment'), error);
     }
   };
 
-  if (!course) {
+  if (!displayCourse) {
     return (
       <div className="text-center py-12">
         <BookOpen className="h-16 w-16 mx-auto text-gray-300 mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 mb-2">未找到課程</h3>
-        <p className="text-gray-500 mb-4">請返回課程列表重新選擇</p>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">{t('courseDetail.notFound.title')}</h3>
+        <p className="text-gray-500 mb-4">{t('courseDetail.notFound.description')}</p>
         <button
           onClick={() => setCurrentView('home')}
           className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
-          返回首页
+          {t('courseDetail.backToHome')}
         </button>
       </div>
     );
@@ -163,7 +203,7 @@ function CourseDetailView({ course, setCurrentView }) {
           className="inline-flex items-center text-gray-600 hover:text-gray-900"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
-          返回首页
+          {t('courseDetail.backToHome')}
         </button>
       </div>
 
@@ -171,39 +211,39 @@ function CourseDetailView({ course, setCurrentView }) {
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <h1 className="text-3xl font-bold mb-2">{course.name}</h1>
-            <p className="text-blue-100 mb-4">{course.description || '暂无课程描述'}</p>
+            <h1 className="text-3xl font-bold mb-2">{displayCourse.name}</h1>
+            <p className="text-blue-100 mb-4">{displayCourse.description || t('courseDetail.noDescription')}</p>
             
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="flex items-center">
                 <Hash className="h-5 w-5 mr-2" />
                 <div>
-                  <p className="text-xs text-blue-200">课程代码</p>
-                  <p className="font-medium">{course.code}</p>
+                  <p className="text-xs text-blue-200">{t('courseDetail.courseCode')}</p>
+                  <p className="font-medium">{displayCourse.code}</p>
                 </div>
               </div>
               
               <div className="flex items-center">
                 <GraduationCap className="h-5 w-5 mr-2" />
                 <div>
-                  <p className="text-xs text-blue-200">学分</p>
-                  <p className="font-medium">{course.credits}</p>
+                  <p className="text-xs text-blue-200">{t('courseDetail.credits')}</p>
+                  <p className="font-medium">{displayCourse.credits}</p>
                 </div>
               </div>
               
               <div className="flex items-center">
                 <Calendar className="h-5 w-5 mr-2" />
                 <div>
-                  <p className="text-xs text-blue-200">学期</p>
-                  <p className="font-medium">{course.semester} {course.year}</p>
+                  <p className="text-xs text-blue-200">{t('courseDetail.semester')}</p>
+                  <p className="font-medium">{displayCourse.semester} {displayCourse.year}</p>
                 </div>
               </div>
               
               <div className="flex items-center">
                 <User className="h-5 w-5 mr-2" />
                 <div>
-                  <p className="text-xs text-blue-200">教师</p>
-                  <p className="font-medium">{course.instructor || '未指定'}</p>
+                  <p className="text-xs text-blue-200">{t('courseDetail.instructor')}</p>
+                  <p className="font-medium">{displayCourse.instructor || t('courseDetail.notSpecified')}</p>
                 </div>
               </div>
             </div>
@@ -229,7 +269,7 @@ function CourseDetailView({ course, setCurrentView }) {
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              课程概览
+              {t('courseDetail.tabs.overview')}
             </button>
             <button
               onClick={() => setActiveTab('materials')}
@@ -239,7 +279,7 @@ function CourseDetailView({ course, setCurrentView }) {
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              学习资料 ({materials.length})
+              {t('courseDetail.tabs.materials')} ({materials.length})
             </button>
             <button
               onClick={() => setActiveTab('papers')}
@@ -249,7 +289,7 @@ function CourseDetailView({ course, setCurrentView }) {
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              共享试卷 ({sharedPapers.length})
+              {t('courseDetail.tabs.papers')} ({sharedPapers.length})
             </button>
             <button
               onClick={() => setActiveTab('comments')}
@@ -259,7 +299,7 @@ function CourseDetailView({ course, setCurrentView }) {
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              课程评论 ({comments.length})
+              {t('courseDetail.tabs.comments')} ({comments.length})
             </button>
           </nav>
         </div>
@@ -274,8 +314,8 @@ function CourseDetailView({ course, setCurrentView }) {
                     <div className="flex items-center">
                       <Upload className="h-8 w-8 text-blue-600 mr-3" />
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900">上传资料</h3>
-                        <p className="text-gray-600">上传课程学习资料</p>
+                        <h3 className="text-lg font-semibold text-gray-900">{t('courseDetail.overview.uploadTitle')}</h3>
+                        <p className="text-gray-600">{t('courseDetail.overview.uploadDescription')}</p>
                       </div>
                     </div>
                   </div>
@@ -293,8 +333,8 @@ function CourseDetailView({ course, setCurrentView }) {
                     <div className="flex items-center">
                       <Brain className="h-8 w-8 text-purple-600 mr-3" />
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900">生成试卷</h3>
-                        <p className="text-gray-600">基于上传资料生成试卷</p>
+                        <h3 className="text-lg font-semibold text-gray-900">{t('courseDetail.overview.generateTitle')}</h3>
+                        <p className="text-gray-600">{t('courseDetail.overview.generateDescription')}</p>
                       </div>
                     </div>
                   </div>
@@ -303,7 +343,7 @@ function CourseDetailView({ course, setCurrentView }) {
                     disabled={loading || materials.length === 0}
                     className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {loading ? '生成中...' : '生成试卷'}
+                    {loading ? t('courseDetail.overview.generating') : t('courseDetail.overview.generateButton')}
                   </button>
                 </div>
               </div>
@@ -324,7 +364,7 @@ function CourseDetailView({ course, setCurrentView }) {
                             <h4 className="font-medium text-gray-900">{material.name}</h4>
                             <p className="text-sm text-gray-600 mt-1">{material.description}</p>
                             <p className="text-xs text-gray-500 mt-2">
-                              上传者: {material.uploaderName} • {new Date(material.createdAt).toLocaleDateString()}
+                              {t('courseDetail.materials.uploader')}: {material.uploaderName} • {new Date(material.createdAt).toLocaleDateString()}
                             </p>
                           </div>
                         </div>
@@ -341,8 +381,8 @@ function CourseDetailView({ course, setCurrentView }) {
               ) : (
                 <div className="text-center py-12">
                   <FileText className="h-16 w-16 mx-auto text-gray-300 mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">暂无学习资料</h3>
-                  <p className="text-gray-500">上传一些学习资料来开始智能学习</p>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">{t('courseDetail.materials.emptyTitle')}</h3>
+                  <p className="text-gray-500">{t('courseDetail.materials.emptyDescription')}</p>
                 </div>
               )}
             </div>
@@ -362,9 +402,9 @@ function CourseDetailView({ course, setCurrentView }) {
                             <h4 className="font-medium text-gray-900">{paper.title}</h4>
                             <p className="text-sm text-gray-600 mt-1">{paper.description}</p>
                             <div className="flex items-center text-xs text-gray-500 mt-2 space-x-4">
-                              <span>创建者: {paper.creatorName}</span>
-                              <span>总分: {paper.totalScore}</span>
-                              <span>时长: {paper.duration}分钟</span>
+                              <span>{t('courseDetail.papers.creator')}: {paper.creatorName}</span>
+                              <span>{t('courseDetail.papers.totalScore')}: {paper.totalScore}</span>
+                              <span>{t('courseDetail.papers.duration')}: {paper.duration}{t('courseDetail.papers.minutes')}</span>
                             </div>
                             <div className="flex items-center mt-2">
                               <Star className="h-4 w-4 text-yellow-400 mr-1" />
@@ -376,7 +416,7 @@ function CourseDetailView({ course, setCurrentView }) {
                           onClick={() => window.open(`/api/papers/${paper.id}/view`, '_blank')}
                           className="ml-2 px-3 py-1 text-sm bg-purple-600 text-white rounded hover:bg-purple-700"
                         >
-                          查看
+                          {t('courseDetail.papers.viewButton')}
                         </button>
                       </div>
                     </div>
@@ -385,8 +425,8 @@ function CourseDetailView({ course, setCurrentView }) {
               ) : (
                 <div className="text-center py-12">
                   <Brain className="h-16 w-16 mx-auto text-gray-300 mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">暂无共享试卷</h3>
-                  <p className="text-gray-500">还没有用户分享试卷</p>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">{t('courseDetail.papers.emptyTitle')}</h3>
+                  <p className="text-gray-500">{t('courseDetail.papers.emptyDescription')}</p>
                 </div>
               )}
             </div>
@@ -397,12 +437,12 @@ function CourseDetailView({ course, setCurrentView }) {
             <div className="space-y-6">
               {/* 添加评论 */}
               <div className="bg-gray-50 p-4 rounded-lg">
-                <h4 className="font-medium text-gray-900 mb-3">添加评论</h4>
+                <h4 className="font-medium text-gray-900 mb-3">{t('courseDetail.comments.addTitle')}</h4>
                 <div className="flex space-x-3">
                   <textarea
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
-                    placeholder="分享你对这门课程的看法..."
+                    placeholder={t('courseDetail.comments.placeholder')}
                     className="flex-1 p-3 border border-gray-300 rounded-lg resize-none"
                     rows="3"
                   />
@@ -411,7 +451,7 @@ function CourseDetailView({ course, setCurrentView }) {
                     disabled={!newComment.trim()}
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    发布
+                    {t('courseDetail.comments.publishButton')}
                   </button>
                 </div>
               </div>
@@ -440,8 +480,8 @@ function CourseDetailView({ course, setCurrentView }) {
                 ) : (
                   <div className="text-center py-12">
                     <MessageCircle className="h-16 w-16 mx-auto text-gray-300 mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">暂无评论</h3>
-                    <p className="text-gray-500">成为第一个评论这门课程的人</p>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">{t('courseDetail.comments.emptyTitle')}</h3>
+                    <p className="text-gray-500">{t('courseDetail.comments.emptyDescription')}</p>
                   </div>
                 )}
               </div>

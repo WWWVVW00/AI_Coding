@@ -1,0 +1,134 @@
+{
+  "nav": {
+    "title": "AI Study Assistant",
+    "home": "Home",
+    "courses": "Courses",
+    "forum": "Forum",
+    "logout": "Logout"
+  },
+  "home": {
+    "welcome": "Welcome back, {name}!",
+    "subtitle": "Start your intelligent learning journey",
+    "courseCount": "{count} Courses",
+    "materialCount": "{count} Materials",
+    "paperCount": "{count} Papers",
+    "addCourse": "Add Course",
+    "addCourseDesc": "Create a new course to organize your study materials",
+    "uploadMaterial": "Upload Material",
+    "uploadMaterialDesc": "Upload materials to prepare for smart quiz generation",
+    "forum": "Course Forum",
+    "forumDesc": "Discuss course experiences and questions with other students",
+    "recentCourses": "Recent Courses",
+    "credits": "{count} Credits",
+    "noCourses": "No courses yet. Click 'Add Course' above to get started!"
+  },
+  "courses": {
+    "title": "My Courses",
+    "subtitle": "Manage all your courses and learning materials",
+    "searchPlaceholder": "Search courses...",
+    "addCourse": "Add Course",
+    "noResults": "No matching courses found",
+    "noResultsDesc": "Try searching with different keywords",
+    "noCourses": "No courses yet",
+    "noCoursesDesc": "Add your first course to start your learning journey"
+  },
+  "courseCard": {
+    "materialCount": "{count} learning materials",
+    "studentCount": "{count} students"
+  },
+  "common": {
+    "translated": "Translated",
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add"
+  },
+  "addCourseModal": {
+    "title": "Add New Course",
+    "editTitle": "Edit Course",
+    "name": "Course Name",
+    "namePlaceholder": "e.g., Artificial Intelligence",
+    "code": "Course Code",
+    "codePlaceholder": "e.g., CS101",
+    "department": "Department",
+    "departmentPlaceholder": "e.g., Computer Science",
+    "instructor": "Instructor",
+    "instructorPlaceholder": "e.g., Dr. Smith",
+    "credits": "Credits",
+    "creditsPlaceholder": "e.g., 3",
+    "semester": "Semester",
+    "year": "Year",
+    "description": "Description",
+    "descriptionPlaceholder": "Enter a brief description of the course",
+    "spring": "Spring",
+    "summer": "Summer",
+    "fall": "Fall",
+    "winter": "Winter",
+    "adding": "Adding...",
+    "addCourseButton": "Add Course"
+  },
+  "forum": {
+    "title": "Course Forum",
+    "subtitle": "This feature is under construction.",
+    "comingSoon": "Stay tuned for a community where you can freely exchange course insights, share materials, and ask questions!"
+  },
+  "courseDetail": {
+    "backToHome": "Back to Home",
+    "noDescription": "No description provided.",
+    "courseCode": "Course Code",
+    "credits": "Credits",
+    "semester": "Semester",
+    "instructor": "Instructor",
+    "notSpecified": "Not Specified",
+    "tabs": {
+      "overview": "Overview",
+      "materials": "Materials",
+      "papers": "Quizzes",
+      "comments": "Comments"
+    },
+    "overview": {
+      "uploadTitle": "Upload Materials",
+      "uploadDescription": "Support PDF, DOCX, PPTX files",
+      "generateTitle": "Generate Smart Quiz",
+      "generateDescription": "Create a quiz based on uploaded materials",
+      "alertNoMaterials": "Please upload materials before generating a quiz.",
+      "generating": "Generating...",
+      "generateButton": "Generate Quiz"
+    },
+    "materials": {
+      "uploader": "Uploader",
+      "emptyTitle": "No learning materials",
+      "emptyDescription": "Upload your first document to get started."
+    },
+    "papers": {
+      "creator": "Creator",
+      "totalScore": "Total Score",
+      "duration": "Duration",
+      "minutes": "mins",
+      "viewButton": "View",
+      "emptyTitle": "No shared quizzes",
+      "emptyDescription": "Generate a quiz from your materials to see it here."
+    },
+    "comments": {
+      "addTitle": "Add a comment",
+      "placeholder": "Share your thoughts about this course...",
+      "publishButton": "Publish",
+      "emptyTitle": "No comments yet",
+      "emptyDescription": "Be the first to share your thoughts."
+    },
+    "notFound": {
+      "title": "Course Not Found",
+      "description": "The course you are looking for does not exist."
+    },
+    "error": {
+      "load": "Failed to load course data.",
+      "upload": "File upload failed.",
+      "uploadError": "An error occurred during file upload.",
+      "generate": "Failed to generate quiz.",
+      "generateError": "An error occurred during quiz generation.",
+      "addComment": "Failed to add comment."
+    }
+  }
+}

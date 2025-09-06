@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 
 // 導入組件
 import NotificationToast from './components/common/NotificationToast';
+import { TranslationProvider } from './contexts/TranslationContext';
 import Navigation from './components/layout/Navigation';
 import LoginView from './components/views/LoginView';
 import HomeView from './components/views/HomeView';
@@ -108,8 +109,6 @@ function StudyAssistant() {
       
       <Navigation 
         user={auth.user}
-        language={app.language}
-        setLanguage={app.setLanguage}
         handleLogout={handleLogout}
         setCurrentView={app.setCurrentView}
       />
@@ -167,7 +166,11 @@ function StudyAssistant() {
 }
 
 function App() {
-  return <StudyAssistant />;
+  return (
+    <TranslationProvider>
+      <StudyAssistant />
+    </TranslationProvider>
+  );
 }
 
 export default App;

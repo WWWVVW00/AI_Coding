@@ -1,0 +1,84 @@
+{
+  "nav": {
+    "title": "智能学习助手",
+    "home": "首页",
+    "courses": "课程",
+    "forum": "论坛",
+    "logout": "退出"
+  },
+  "home": {
+    "welcome": "欢迎回来，{name}！",
+    "subtitle": "开始您的智能学习之旅",
+    "courseCount": "{count} 门课程",
+    "materialCount": "{count} 个资料",
+    "paperCount": "{count} 份试卷",
+    "addCourse": "添加课程",
+    "addCourseDesc": "创建新的课程来组织您的学习资料",
+    "uploadMaterial": "上传资料",
+    "uploadMaterialDesc": "上传学习资料，为智能试卷生成做准备",
+    "forum": "课程交流区",
+    "forumDesc": "与其他同学交流课程心得和问题",
+    "recentCourses": "最近课程",
+    "credits": "{count} 学分",
+    "noCourses": "还没有课程，点击上方“添加课程”开始吧！"
+  },
+  "courses": {
+    "title": "我的课程",
+    "subtitle": "管理您的所有课程和学习资料",
+    "searchPlaceholder": "搜索课程...",
+    "addCourse": "添加课程",
+    "noResults": "没有找到匹配的课程",
+    "noResultsDesc": "尝试使用不同的关键词搜索",
+    "noCourses": "还没有课程",
+    "noCoursesDesc": "添加您的第一门课程开始学习之旅"
+  },
+  "courseCard": {
+    "materialCount": "{count} 个学习材料",
+    "studentCount": "{count} 名学生"
+  },
+  "common": {
+    "translated": "已翻译",
+    "save": "保存",
+    "cancel": "取消",
+    "close": "关闭",
+    "delete": "删除",
+    "edit": "编辑",
+    "add": "添加"
+  },
+  "addCourseModal": {
+    "title": "添加新课程",
+    "editTitle": "编辑课程",
+    "name": "课程名称",
+    "namePlaceholder": "例如：人工智能",
+    "code": "课程代码",
+    "codePlaceholder": "例如：CS101",
+    "department": "开课院系",
+    "departmentPlaceholder": "例如：计算机科学系",
+    "instructor": "授课教师",
+    "instructorPlaceholder": "例如：王老师",
+    "credits": "学分",
+    "creditsPlaceholder": "例如：3",
+    "semester": "学期",
+    "year": "学年",
+    "description": "课程描述",
+    "descriptionPlaceholder": "输入课程的简要描述",
+    "spring": "春季",
+    "summer": "夏季",
+    "fall": "秋季",
+    "winter": "冬季",
+    "adding": "添加中...",
+    "addCourseButton": "添加课程"
+  },
+  "forum": {
+    "title": "课程交流区",
+    "subtitle": "此功能正在建设中。",
+    "comingSoon": "敬请期待一个可以自由交流课程心得、分享资料和提问的社区！"
+  },
+  "courseDetail": {
+    "backToCourses": "返回课程列表",
+    "overview": "课程概览",
+    "materials": "学习资料",
+    "papers": "共享试卷",
+    "comments": "评论"
+  }
+}

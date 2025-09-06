@@ -1,5 +1,6 @@
 import React from 'react';
 import { BookOpen, FileText, Brain, Zap, Upload, Users } from 'lucide-react';
+import { useTranslation } from '../../contexts/TranslationContext';
 
 function HomeView({ 
   user, 
@@ -10,25 +11,27 @@ function HomeView({
   setCurrentView, 
   setSelectedCourse 
 }) {
+  const { t } = useTranslation();
+
   return (
     <div className="space-y-8">
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-3xl font-bold mb-2">歡迎回來，{user?.fullName || user?.username}！</h2>
-            <p className="text-blue-100 mb-4">開始您的智能學習之旅</p>
+            <h2 className="text-3xl font-bold mb-2">{t('home.welcome', { name: user?.fullName || user?.username })}</h2>
+            <p className="text-blue-100 mb-4">{t('home.subtitle')}</p>
             <div className="flex space-x-4">
               <div className="flex items-center">
                 <BookOpen className="h-5 w-5 mr-2" />
-                <span>{courses.length} 門課程</span>
+                <span>{t('home.courseCount', { count: courses.length })}</span>
               </div>
               <div className="flex items-center">
                 <FileText className="h-5 w-5 mr-2" />
-                <span>{materials.length} 個資料</span>
+                <span>{t('home.materialCount', { count: materials.length })}</span>
               </div>
               <div className="flex items-center">
                 <Brain className="h-5 w-5 mr-2" />
-                <span>{papers.length} 份試卷</span>
+                <span>{t('home.paperCount', { count: papers.length })}</span>
               </div>
             </div>
           </div>
@@ -49,9 +52,9 @@ function HomeView({
             <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
               <BookOpen className="h-6 w-6 text-blue-600" />
             </div>
-            <h3 className="ml-4 text-lg font-semibold text-gray-800">添加課程</h3>
+            <h3 className="ml-4 text-lg font-semibold text-gray-800">{t('home.addCourse')}</h3>
           </div>
-          <p className="text-gray-600">創建新的課程來組織您的學習資料</p>
+          <p className="text-gray-600">{t('home.addCourseDesc')}</p>
         </button>
 
         <button 
@@ -62,9 +65,9 @@ function HomeView({
             <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
               <Upload className="h-6 w-6 text-green-600" />
             </div>
-            <h3 className="ml-4 text-lg font-semibold text-gray-800">上傳資料</h3>
+            <h3 className="ml-4 text-lg font-semibold text-gray-800">{t('home.uploadMaterial')}</h3>
           </div>
-          <p className="text-gray-600">上傳學習資料，為智能試卷生成做準備</p>
+          <p className="text-gray-600">{t('home.uploadMaterialDesc')}</p>
         </button>
 
         <button 
@@ -75,14 +78,14 @@ function HomeView({
             <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
               <Users className="h-6 w-6 text-yellow-600" />
             </div>
-            <h3 className="ml-4 text-lg font-semibold text-gray-800">课程交流区</h3>
+            <h3 className="ml-4 text-lg font-semibold text-gray-800">{t('home.forum')}</h3>
           </div>
-          <p className="text-gray-600">与其他同学交流课程心得和问题</p>
+          <p className="text-gray-600">{t('home.forumDesc')}</p>
         </button>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">最近課程</h3>
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">{t('home.recentCourses')}</h3>
         {courses.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {courses.slice(0, 6).map((course) => (
@@ -99,7 +102,7 @@ function HomeView({
                 <div className="flex items-center text-xs text-gray-500">
                   <span>{course.department}</span>
                   <span className="mx-2">•</span>
-                  <span>{course.credits} 學分</span>
+                  <span>{t('home.credits', { count: course.credits })}</span>
                 </div>
               </div>
             ))}
@@ -107,10 +110,11 @@ function HomeView({
         ) : (
           <div className="text-center py-8 text-gray-500">
             <BookOpen className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-            <p>還沒有課程，點擊上方"添加課程"開始吧！</p>
+            <p>{t('home.noCourses')}</p>
           </div>
         )}
       </div>
+
     </div>
   );
 }
