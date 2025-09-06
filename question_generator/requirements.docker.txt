@@ -1,0 +1,20 @@
+# Core FastAPI dependencies
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+python-multipart
+pydantic>=2.0.0
+
+# AI dependencies - simplified to avoid conflicts
+langchain-openai
+langchain-text-splitters
+langchain-core
+openai
+
+# PDF processing
+PyPDF2
+
+# Environment management
+python-dotenv
+
+# Additional dependencies for Docker
+requests
