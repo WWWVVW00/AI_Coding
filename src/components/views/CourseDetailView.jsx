@@ -291,9 +291,12 @@ function CourseDetailView({ course, setCurrentView }) {
   const pollGenerationStatus = async (paperId) => {
     let attempts = 0;
     const maxAttempts = 60; // 最多轮询5分钟
+    let pollingStopped = false;
 
     const poll = async () => {
       try {
+        console.log(`🔍 轮询状态 (第${attempts + 1}次)...`);
+        
         const response = await fetch(`/api/papers/${paperId}/generation-status`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -302,6 +305,7 @@ function CourseDetailView({ course, setCurrentView }) {
 
         if (response.ok) {
           const statusData = await response.json();
+          console.log('📊 状态数据:', statusData);
           
           setGenerationStatus({
             status: statusData.generationStatus.status,
@@ -311,35 +315,55 @@ function CourseDetailView({ course, setCurrentView }) {
           });
 
           if (statusData.generationStatus.status === 'completed') {
+            console.log('🎉 AI生成完成！');
             setGenerationStatus({
               status: 'completed',
               message: '试卷生成完成！',
               paperId: paperId
             });
             setGeneratingPaper(false);
-            await loadCourseData(); // 重新加载数据
+            // 延迟加载数据，避免立即重置状态
+            setTimeout(async () => {
+              await loadCourseData();
+            }, 1000);
             return;
           } else if (statusData.generationStatus.status === 'failed') {
+            console.log('❌ AI生成失败');
             throw new Error(statusData.generationStatus.error || '生成失败');
           }
+        } else {
+          console.log('⚠️ 状态查询响应异常:', response.status);
         }
 
         attempts++;
-        if (attempts < maxAttempts && generatingPaper) {
+        if (attempts < maxAttempts && !pollingStopped) {
+          console.log(`⏰ 5秒后进行第${attempts + 1}次轮询...`);
           setTimeout(poll, 5000); // 5秒后再次查询
         } else {
-          throw new Error('生成超时');
+          console.log('⏰ 轮询超时或停止');
+          pollingStopped = true;
+          setGenerationStatus({
+            status: 'error',
+            message: '生成超时，请稍后查看试卷列表'
+          });
+          setTimeout(() => {
+            setGeneratingPaper(false);
+          }, 2000);
         }
       } catch (error) {
-        console.error('查询生成状态失败:', error);
+        console.error('❌ 查询生成状态失败:', error);
+        pollingStopped = true;
         setGenerationStatus({
           status: 'error',
           message: `查询状态失败: ${error.message}`
         });
-        setGeneratingPaper(false);
+        setTimeout(() => {
+          setGeneratingPaper(false);
+        }, 3000);
       }
     };
 
+    console.log('🚀 开始轮询，2秒后进行第一次查询...');
     setTimeout(poll, 2000); // 2秒后开始第一次查询
   };
 
