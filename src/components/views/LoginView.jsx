@@ -17,11 +17,11 @@ function LoginView({
   loading 
 }) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
       <div className="flex items-center justify-center min-h-screen p-4">
         <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
           <div className="text-center mb-8">
-            <div className="mx-auto w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mb-4">
+            <div className="mx-auto w-16 h-16 bg-cityu-gradient rounded-full flex items-center justify-center mb-4">
               <BookOpen className="h-8 w-8 text-white" />
             </div>
             <h1 className="text-2xl font-bold text-gray-800 mb-2">智能學習助手</h1>
@@ -30,13 +30,13 @@ function LoginView({
           <div className="space-y-4">
             <button 
               onClick={() => setShowLogin(true)} 
-              className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              className="w-full bg-cityu-gradient text-white py-3 rounded-lg hover:shadow-lg transition-all font-medium"
             >
               登錄
             </button>
             <button 
               onClick={() => setShowRegister(true)} 
-              className="w-full border border-blue-600 text-blue-600 py-3 rounded-lg hover:bg-blue-50 transition-colors font-medium"
+              className="w-full border border-cityu-orange text-cityu-orange py-3 rounded-lg hover:bg-orange-50 transition-colors font-medium"
             >
               註冊
             </button>

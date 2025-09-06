@@ -12,7 +12,7 @@ export function useCourses() {
     department: '',
     description: '',
     credits: 3,
-    semester: 'Fall',
+    semester: 'Sem A',
     year: new Date().getFullYear(),
     instructor: ''
   });
@@ -44,7 +44,7 @@ export function useCourses() {
           department: '',
           description: '',
           credits: 3,
-          semester: 'Fall',
+          semester: 'Sem A',
           year: new Date().getFullYear(),
           instructor: ''
         });

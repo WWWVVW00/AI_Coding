@@ -18,7 +18,7 @@ function LoginModal({ setShowLogin, setShowRegister, handleLogin, loginForm, set
               type="text"
               value={loginForm.username}
               onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-cityu-orange focus:border-cityu-orange"
               required
               autoComplete="username"
             />
@@ -45,7 +45,7 @@ function LoginModal({ setShowLogin, setShowRegister, handleLogin, loginForm, set
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              className="flex-1 bg-cityu-gradient text-white py-2 rounded-lg hover:shadow-lg transition-all disabled:opacity-50"
             >
               {loading ? '登錄中...' : '登錄'}
             </button>
@@ -57,7 +57,7 @@ function LoginModal({ setShowLogin, setShowRegister, handleLogin, loginForm, set
               setShowLogin(false);
               setShowRegister(true);
             }}
-            className="text-blue-600 hover:text-blue-800 text-sm"
+            className="text-cityu-orange hover:text-cityu-red text-sm"
           >
             還沒有賬號？點擊註冊
           </button>

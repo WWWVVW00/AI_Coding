@@ -22,8 +22,8 @@ async function createDatabase() {
     await connection.execute(`CREATE DATABASE IF NOT EXISTS \`${dbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
     console.log(`✅ 数据库 ${dbName} 创建成功或已存在`);
     
-    // 选择数据库
-    await connection.execute(`USE \`${dbName}\``);
+    // 选择数据库 - 使用 query 而不是 execute 来避免预处理语句问题
+    await connection.query(`USE \`${dbName}\``);
     
     return connection;
   } catch (error) {
@@ -54,7 +54,7 @@ async function runMigration() {
     const statements = sqlContent
       .split(';')
       .map(stmt => stmt.trim())
-      .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'));
+      .filter(stmt => stmt.length > 0 && !stmt.startsWith('--') && !stmt.startsWith('/*'));
     
     console.log(`📄 找到 ${statements.length} 个SQL语句`);
     

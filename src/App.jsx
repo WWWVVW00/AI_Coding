@@ -103,7 +103,7 @@ function StudyAssistant() {
 
   // 主應用界面
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-100">
       <NotificationToast error={auth.error} success={auth.success} />
       
       <Navigation 
@@ -146,7 +146,7 @@ function StudyAssistant() {
         )}
 
         {app.currentView === 'forum' && (
-          <ForumView />
+          <ForumView setCurrentView={app.setCurrentView} />
         )}
         
         {/* 其他視圖可以在這裡添加 */}

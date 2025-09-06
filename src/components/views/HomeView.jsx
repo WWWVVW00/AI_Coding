@@ -12,11 +12,11 @@ function HomeView({
 }) {
   return (
     <div className="space-y-8">
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white">
+      <div className="bg-cityu-gradient rounded-2xl p-8 text-white">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-3xl font-bold mb-2">歡迎回來，{user?.fullName || user?.username}！</h2>
-            <p className="text-blue-100 mb-4">開始您的智能學習之旅</p>
+            <p className="text-orange-100 mb-4">開始您的智能學習之旅</p>
             <div className="flex space-x-4">
               <div className="flex items-center">
                 <BookOpen className="h-5 w-5 mr-2" />
@@ -46,8 +46,8 @@ function HomeView({
           className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-200 text-left"
         >
           <div className="flex items-center mb-4">
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <BookOpen className="h-6 w-6 text-blue-600" />
+            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+              <BookOpen className="h-6 w-6 text-cityu-orange" />
             </div>
             <h3 className="ml-4 text-lg font-semibold text-gray-800">添加課程</h3>
           </div>
@@ -59,8 +59,8 @@ function HomeView({
           className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-200 text-left"
         >
           <div className="flex items-center mb-4">
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <Upload className="h-6 w-6 text-green-600" />
+            <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+              <Upload className="h-6 w-6 text-cityu-red" />
             </div>
             <h3 className="ml-4 text-lg font-semibold text-gray-800">上傳資料</h3>
           </div>
@@ -72,8 +72,8 @@ function HomeView({
           className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-200 text-left"
         >
           <div className="flex items-center mb-4">
-            <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-              <Users className="h-6 w-6 text-yellow-600" />
+            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+              <Users className="h-6 w-6 text-cityu-orange" />
             </div>
             <h3 className="ml-4 text-lg font-semibold text-gray-800">课程交流区</h3>
           </div>
@@ -92,7 +92,7 @@ function HomeView({
                   setSelectedCourse(course); 
                   setCurrentView('course-detail'); 
                 }} 
-                className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:shadow-sm transition-all cursor-pointer"
+                className="p-4 border border-gray-200 rounded-lg hover:border-cityu-orange hover:shadow-sm transition-all cursor-pointer"
               >
                 <h4 className="font-medium text-gray-800 mb-1">{course.name}</h4>
                 <p className="text-sm text-gray-600 mb-2">{course.code}</p>

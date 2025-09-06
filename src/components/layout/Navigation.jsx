@@ -8,8 +8,8 @@ function Navigation({ user, language, setLanguage, handleLogout, setCurrentView 
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
             <div className="flex-shrink-0 flex items-center cursor-pointer" onClick={() => setCurrentView('home')}>
-              <BookOpen className="h-8 w-8 text-blue-600 mr-3" />
-              <h1 className="text-xl font-bold text-gray-800">智能學習助手</h1>
+              <BookOpen className="h-8 w-8 text-cityu-orange mr-3" />
+              <h1 className="text-xl font-bold bg-cityu-gradient bg-clip-text text-transparent">智能學習助手</h1>
             </div>
           </div>
           <div className="flex items-center space-x-4">

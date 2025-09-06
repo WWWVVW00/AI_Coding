@@ -145,10 +145,10 @@ function CourseDetailView({ course, setCurrentView }) {
         <p className="text-gray-500 mb-4">請返回課程列表重新選擇</p>
         <button
           onClick={() => setCurrentView('home')}
-          className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          className="inline-flex items-center px-4 py-2 bg-cityu-gradient text-white rounded-lg hover:shadow-lg transition-all"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
-          返回首页
+          返回首頁
         </button>
       </div>
     );
@@ -160,25 +160,25 @@ function CourseDetailView({ course, setCurrentView }) {
       <div className="flex items-center justify-between">
         <button
           onClick={() => setCurrentView('home')}
-          className="inline-flex items-center text-gray-600 hover:text-gray-900"
+          className="inline-flex items-center text-gray-600 hover:text-cityu-orange transition-colors"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
-          返回首页
+          返回首頁
         </button>
       </div>
 
       {/* 课程信息卡片 */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white">
+      <div className="bg-cityu-gradient rounded-2xl p-8 text-white">
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <h1 className="text-3xl font-bold mb-2">{course.name}</h1>
-            <p className="text-blue-100 mb-4">{course.description || '暂无课程描述'}</p>
+            <p className="text-orange-100 mb-4">{course.description || '暂无课程描述'}</p>
             
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="flex items-center">
                 <Hash className="h-5 w-5 mr-2" />
                 <div>
-                  <p className="text-xs text-blue-200">课程代码</p>
+                  <p className="text-xs text-orange-200">课程代码</p>
                   <p className="font-medium">{course.code}</p>
                 </div>
               </div>
@@ -186,7 +186,7 @@ function CourseDetailView({ course, setCurrentView }) {
               <div className="flex items-center">
                 <GraduationCap className="h-5 w-5 mr-2" />
                 <div>
-                  <p className="text-xs text-blue-200">学分</p>
+                  <p className="text-xs text-orange-200">学分</p>
                   <p className="font-medium">{course.credits}</p>
                 </div>
               </div>
@@ -194,7 +194,7 @@ function CourseDetailView({ course, setCurrentView }) {
               <div className="flex items-center">
                 <Calendar className="h-5 w-5 mr-2" />
                 <div>
-                  <p className="text-xs text-blue-200">学期</p>
+                  <p className="text-xs text-orange-200">学期</p>
                   <p className="font-medium">{course.semester} {course.year}</p>
                 </div>
               </div>
@@ -202,7 +202,7 @@ function CourseDetailView({ course, setCurrentView }) {
               <div className="flex items-center">
                 <User className="h-5 w-5 mr-2" />
                 <div>
-                  <p className="text-xs text-blue-200">教师</p>
+                  <p className="text-xs text-orange-200">教师</p>
                   <p className="font-medium">{course.instructor || '未指定'}</p>
                 </div>
               </div>
@@ -225,7 +225,7 @@ function CourseDetailView({ course, setCurrentView }) {
               onClick={() => setActiveTab('overview')}
               className={`py-4 px-1 border-b-2 font-medium text-sm ${
                 activeTab === 'overview'
-                  ? 'border-blue-500 text-blue-600'
+                  ? 'border-cityu-orange text-cityu-orange'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
@@ -235,7 +235,7 @@ function CourseDetailView({ course, setCurrentView }) {
               onClick={() => setActiveTab('materials')}
               className={`py-4 px-1 border-b-2 font-medium text-sm ${
                 activeTab === 'materials'
-                  ? 'border-blue-500 text-blue-600'
+                  ? 'border-cityu-orange text-cityu-orange'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
@@ -245,7 +245,7 @@ function CourseDetailView({ course, setCurrentView }) {
               onClick={() => setActiveTab('papers')}
               className={`py-4 px-1 border-b-2 font-medium text-sm ${
                 activeTab === 'papers'
-                  ? 'border-blue-500 text-blue-600'
+                  ? 'border-cityu-orange text-cityu-orange'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
@@ -255,7 +255,7 @@ function CourseDetailView({ course, setCurrentView }) {
               onClick={() => setActiveTab('comments')}
               className={`py-4 px-1 border-b-2 font-medium text-sm ${
                 activeTab === 'comments'
-                  ? 'border-blue-500 text-blue-600'
+                  ? 'border-cityu-orange text-cityu-orange'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
@@ -269,10 +269,10 @@ function CourseDetailView({ course, setCurrentView }) {
           {activeTab === 'overview' && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-blue-50 p-6 rounded-lg">
+                <div className="bg-orange-50 p-6 rounded-lg">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center">
-                      <Upload className="h-8 w-8 text-blue-600 mr-3" />
+                      <Upload className="h-8 w-8 text-cityu-orange mr-3" />
                       <div>
                         <h3 className="text-lg font-semibold text-gray-900">上传资料</h3>
                         <p className="text-gray-600">上传课程学习资料</p>
@@ -283,15 +283,15 @@ function CourseDetailView({ course, setCurrentView }) {
                     type="file"
                     multiple
                     onChange={handleFileUpload}
-                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-cityu-orange hover:file:bg-orange-100"
                     disabled={loading}
                   />
                 </div>
                 
-                <div className="bg-purple-50 p-6 rounded-lg">
+                <div className="bg-red-50 p-6 rounded-lg">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center">
-                      <Brain className="h-8 w-8 text-purple-600 mr-3" />
+                      <Brain className="h-8 w-8 text-cityu-red mr-3" />
                       <div>
                         <h3 className="text-lg font-semibold text-gray-900">生成试卷</h3>
                         <p className="text-gray-600">基于上传资料生成试卷</p>
@@ -301,7 +301,7 @@ function CourseDetailView({ course, setCurrentView }) {
                   <button
                     onClick={handleGeneratePaper}
                     disabled={loading || materials.length === 0}
-                    className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full px-4 py-2 bg-cityu-gradient text-white rounded-lg hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   >
                     {loading ? '生成中...' : '生成试卷'}
                   </button>
@@ -357,7 +357,7 @@ function CourseDetailView({ course, setCurrentView }) {
                     <div key={paper.id} className="bg-gray-50 p-4 rounded-lg">
                       <div className="flex items-start justify-between">
                         <div className="flex items-start flex-1">
-                          <Brain className="h-5 w-5 text-purple-600 mr-3 mt-1" />
+                          <Brain className="h-5 w-5 text-cityu-red mr-3 mt-1" />
                           <div className="flex-1">
                             <h4 className="font-medium text-gray-900">{paper.title}</h4>
                             <p className="text-sm text-gray-600 mt-1">{paper.description}</p>
@@ -374,7 +374,7 @@ function CourseDetailView({ course, setCurrentView }) {
                         </div>
                         <button
                           onClick={() => window.open(`/api/papers/${paper.id}/view`, '_blank')}
-                          className="ml-2 px-3 py-1 text-sm bg-purple-600 text-white rounded hover:bg-purple-700"
+                          className="ml-2 px-3 py-1 text-sm bg-cityu-gradient text-white rounded hover:shadow-lg transition-all"
                         >
                           查看
                         </button>
@@ -409,7 +409,7 @@ function CourseDetailView({ course, setCurrentView }) {
                   <button
                     onClick={handleAddComment}
                     disabled={!newComment.trim()}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 py-2 bg-cityu-gradient text-white rounded-lg hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   >
                     发布
                   </button>

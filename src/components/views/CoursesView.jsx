@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, BookOpen, ChevronRight } from 'lucide-react';
+import { Search, BookOpen, ChevronRight, ArrowLeft } from 'lucide-react';
 
 function CoursesView({ 
   courses, 
@@ -17,11 +17,22 @@ function CoursesView({
 
   return (
     <div className="space-y-6">
+      {/* 返回按钮 */}
+      <div className="flex items-center">
+        <button
+          onClick={() => setCurrentView('home')}
+          className="inline-flex items-center text-gray-600 hover:text-cityu-orange transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          返回首頁
+        </button>
+      </div>
+
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-2xl font-bold text-gray-800 mb-4 sm:mb-0">課程管理</h2>
         <button 
           onClick={() => setShowAddCourse(true)} 
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+          className="bg-cityu-gradient text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all flex items-center"
         >
           <BookOpen className="h-4 w-4 mr-2" />
           添加課程
@@ -33,7 +44,7 @@ function CoursesView({
         <input 
           type="text" 
           placeholder="搜索課程..." 
-          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cityu-orange focus:border-cityu-orange" 
           value={searchQuery} 
           onChange={(e) => setSearchQuery(e.target.value)} 
         />
@@ -55,7 +66,7 @@ function CoursesView({
                   <div className="flex-1">
                     <div className="flex items-center">
                       <h3 className="text-lg font-semibold text-gray-800">{course.name}</h3>
-                      <span className="ml-3 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                      <span className="ml-3 px-2 py-1 bg-orange-100 text-cityu-orange text-xs rounded-full">
                         {course.code}
                       </span>
                     </div>
@@ -91,7 +102,7 @@ function CoursesView({
             {!searchQuery && (
               <button 
                 onClick={() => setShowAddCourse(true)} 
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                className="bg-cityu-gradient text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all"
               >
                 添加課程
               </button>

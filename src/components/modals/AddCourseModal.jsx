@@ -51,29 +51,43 @@ function AddCourseModal({ setShowAddCourse, handleAddCourse, newCourse, setNewCo
               rows="3" 
             />
           </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">學分</label>
+            <input 
+              type="number" 
+              value={newCourse.credits} 
+              onChange={(e) => setNewCourse({ ...newCourse, credits: parseInt(e.target.value) })} 
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500" 
+              min="1" 
+              max="10" 
+            />
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">學分</label>
-              <input 
-                type="number" 
-                value={newCourse.credits} 
-                onChange={(e) => setNewCourse({ ...newCourse, credits: parseInt(e.target.value) })} 
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
-                min="1" 
-                max="10" 
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-2">年份</label>
+              <select 
+                value={newCourse.year || new Date().getFullYear()} 
+                onChange={(e) => setNewCourse({ ...newCourse, year: parseInt(e.target.value) })} 
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+              >
+                {Array.from({ length: 10 }, (_, i) => {
+                  const year = new Date().getFullYear() - 2 + i;
+                  return (
+                    <option key={year} value={year}>{year}</option>
+                  );
+                })}
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">學期</label>
               <select 
                 value={newCourse.semester} 
                 onChange={(e) => setNewCourse({ ...newCourse, semester: e.target.value })} 
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
               >
-                <option value="Spring">春季</option>
-                <option value="Summer">夏季</option>
-                <option value="Fall">秋季</option>
-                <option value="Winter">冬季</option>
+                <option value="Sem A">Sem A</option>
+                <option value="Sem B">Sem B</option>
+                <option value="Summer">Summer</option>
               </select>
             </div>
           </div>
@@ -83,7 +97,7 @@ function AddCourseModal({ setShowAddCourse, handleAddCourse, newCourse, setNewCo
               type="text" 
               value={newCourse.instructor} 
               onChange={(e) => setNewCourse({ ...newCourse, instructor: e.target.value })} 
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500" 
             />
           </div>
           <div className="flex space-x-3 pt-4">
@@ -97,7 +111,7 @@ function AddCourseModal({ setShowAddCourse, handleAddCourse, newCourse, setNewCo
             <button 
               type="submit" 
               disabled={loading} 
-              className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              className="flex-1 bg-gradient-to-r from-orange-500 to-red-500 text-white py-2 rounded-lg hover:from-orange-600 hover:to-red-600 transition-colors disabled:opacity-50"
             >
               {loading ? '添加中...' : '添加課程'}
             </button>

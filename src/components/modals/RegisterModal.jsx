@@ -18,7 +18,7 @@ function RegisterModal({ setShowRegister, setShowLogin, handleRegister, register
               type="text"
               value={registerForm.username}
               onChange={(e) => setRegisterForm({ ...registerForm, username: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-cityu-orange focus:border-cityu-orange"
               required
               autoComplete="username"
             />
@@ -68,7 +68,7 @@ function RegisterModal({ setShowRegister, setShowLogin, handleRegister, register
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              className="flex-1 bg-cityu-gradient text-white py-2 rounded-lg hover:shadow-lg transition-all disabled:opacity-50"
             >
               {loading ? '註冊中...' : '註冊'}
             </button>
@@ -80,7 +80,7 @@ function RegisterModal({ setShowRegister, setShowLogin, handleRegister, register
               setShowRegister(false);
               setShowLogin(true);
             }}
-            className="text-blue-600 hover:text-blue-800 text-sm"
+            className="text-cityu-orange hover:text-cityu-red text-sm"
           >
             已有賬號？點擊登錄
           </button>
