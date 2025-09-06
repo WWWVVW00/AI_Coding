@@ -12,8 +12,8 @@ function Navigation({ user, handleLogout, setCurrentView }) {
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-8">
             <div className="flex-shrink-0 flex items-center cursor-pointer" onClick={() => setCurrentView('home')}>
-              <BookOpen className="h-8 w-8 text-blue-600 mr-3" />
-              <h1 className="text-xl font-bold text-gray-800">{t('nav.title')}</h1>
+              <BookOpen className="h-8 w-8 text-cityu-orange mr-3" />
+              <h1 className="text-xl font-bold bg-cityu-gradient bg-clip-text text-transparent">{t('nav.title')}</h1>
             </div>
             
             {/* 导航菜单 */}
