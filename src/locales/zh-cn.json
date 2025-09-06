@@ -75,10 +75,60 @@
     "comingSoon": "敬请期待一个可以自由交流课程心得、分享资料和提问的社区！"
   },
   "courseDetail": {
-    "backToCourses": "返回课程列表",
-    "overview": "课程概览",
-    "materials": "学习资料",
-    "papers": "共享试卷",
-    "comments": "评论"
+    "backToHome": "返回首页",
+    "noDescription": "暂无课程描述。",
+    "courseCode": "课程代码",
+    "credits": "学分",
+    "semester": "学期",
+    "instructor": "授课教师",
+    "notSpecified": "未指定",
+    "tabs": {
+      "overview": "课程概览",
+      "materials": "学习资料",
+      "papers": "共享试卷",
+      "comments": "课程评论"
+    },
+    "overview": {
+      "uploadTitle": "上传学习资料",
+      "uploadDescription": "支持 PDF, DOCX, PPTX 等格式",
+      "generateTitle": "智能生成试卷",
+      "generateDescription": "基于上传的资料一键生成试卷",
+      "alertNoMaterials": "请先上传学习资料再生成试卷。",
+      "generating": "生成中...",
+      "generateButton": "生成试卷"
+    },
+    "materials": {
+      "uploader": "上传者",
+      "emptyTitle": "暂无学习资料",
+      "emptyDescription": "上传你的第一份学习资料吧。"
+    },
+    "papers": {
+      "creator": "创建者",
+      "totalScore": "总分",
+      "duration": "时长",
+      "minutes": "分钟",
+      "viewButton": "查看试卷",
+      "emptyTitle": "暂无共享试卷",
+      "emptyDescription": "从您的学习资料生成一份试卷并在此处查看。"
+    },
+    "comments": {
+      "addTitle": "发表评论",
+      "placeholder": "分享你对这门课程的看法...",
+      "publishButton": "发布",
+      "emptyTitle": "暂无评论",
+      "emptyDescription": "成为第一个分享想法的人。"
+    },
+    "notFound": {
+      "title": "课程未找到",
+      "description": "您正在查找的课程不存在。"
+    },
+    "error": {
+      "load": "加载课程数据失败。",
+      "upload": "文件上传失败。",
+      "uploadError": "文件上传时发生错误。",
+      "generate": "生成试卷失败。",
+      "generateError": "生成试卷时发生错误。",
+      "addComment": "添加评论失败。"
+    }
   }
 }

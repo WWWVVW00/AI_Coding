@@ -75,10 +75,60 @@
     "comingSoon": "敬請期待一個可以自由交流課程心得、分享資料和提問的社群！"
   },
   "courseDetail": {
-    "backToCourses": "返回課程列表",
-    "overview": "課程概覽",
-    "materials": "學習資料",
-    "papers": "共享試卷",
-    "comments": "評論"
+    "backToHome": "返回首頁",
+    "noDescription": "暫無課程描述。",
+    "courseCode": "課程代碼",
+    "credits": "學分",
+    "semester": "學期",
+    "instructor": "授課教師",
+    "notSpecified": "未指定",
+    "tabs": {
+      "overview": "課程概覽",
+      "materials": "學習資料",
+      "papers": "共享試卷",
+      "comments": "課程評論"
+    },
+    "overview": {
+      "uploadTitle": "上傳學習資料",
+      "uploadDescription": "支援 PDF, DOCX, PPTX 等格式",
+      "generateTitle": "智慧生成試卷",
+      "generateDescription": "基於上傳的資料一鍵生成試卷",
+      "alertNoMaterials": "請先上傳學習資料再生成試卷。",
+      "generating": "生成中...",
+      "generateButton": "生成試卷"
+    },
+    "materials": {
+      "uploader": "上傳者",
+      "emptyTitle": "暫無學習資料",
+      "emptyDescription": "上傳你的第一份學習資料吧。"
+    },
+    "papers": {
+      "creator": "建立者",
+      "totalScore": "總分",
+      "duration": "時長",
+      "minutes": "分鐘",
+      "viewButton": "檢視試卷",
+      "emptyTitle": "暫無共享試卷",
+      "emptyDescription": "從您的學習資料生成一份試卷並在此處檢視。"
+    },
+    "comments": {
+      "addTitle": "發表評論",
+      "placeholder": "分享你對這門課程的看法...",
+      "publishButton": "發布",
+      "emptyTitle": "暫無評論",
+      "emptyDescription": "成為第一個分享想法的人。"
+    },
+    "notFound": {
+      "title": "課程未找到",
+      "description": "您正在查找的課程不存在。"
+    },
+    "error": {
+      "load": "載入課程資料失敗。",
+      "upload": "檔案上傳失敗。",
+      "uploadError": "檔案上傳時發生錯誤。",
+      "generate": "生成試卷失敗。",
+      "generateError": "生成試卷時發生錯誤。",
+      "addComment": "新增評論失敗。"
+    }
   }
 }
