@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>清除浏览器存储</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        .success {
+            color: #10b981;
+            margin-top: 20px;
+        }
+        .info {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #1e40af;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 清除浏览器存储</h1>
+        
+        <div class="info">
+            <strong>说明：</strong> 如果遇到认证问题，请点击下面的按钮清除旧的认证信息。
+            清除后，请直接访问 <a href="http://localhost">http://localhost</a> 系统会自动创建新的测试认证。
+        </div>
+        
+        <button onclick="clearStorage()">清除所有存储数据</button>
+        <button onclick="clearTokenOnly()">仅清除认证Token</button>
+        
+        <div id="result"></div>
+        
+        <div style="margin-top: 30px;">
+            <a href="http://localhost" style="color: #3b82f6; text-decoration: none;">← 返回主应用</a>
+        </div>
+    </div>
+
+    <script>
+        function clearStorage() {
+            localStorage.clear();
+            sessionStorage.clear();
+            document.getElementById('result').innerHTML = 
+                '<div class="success">✅ 所有浏览器存储数据已清除！<br>现在可以返回主应用了。</div>';
+        }
+        
+        function clearTokenOnly() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('currentUserId');
+            document.getElementById('result').innerHTML = 
+                '<div class="success">✅ 认证Token已清除！<br>现在可以返回主应用了。</div>';
+        }
+        
+        // 显示当前存储信息
+        window.onload = function() {
+            const token = localStorage.getItem('token');
+            if (token) {
+                const tokenInfo = document.createElement('div');
+                tokenInfo.className = 'info';
+                tokenInfo.innerHTML = `<strong>当前Token:</strong> ${token.substring(0, 30)}...`;
+                document.querySelector('.container').insertBefore(tokenInfo, document.querySelector('button'));
+            }
+        }
+    </script>
+</body>
+</html>
