@@ -1,5 +1,17 @@
-flask
-flask-cors
-python-dotenv
+# Core dependencies for microservice
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+python-multipart
+pydantic>=1.10.0,<2.0.0
+
+# AI dependencies
+langchain>=0.1.0
+langchain-openai>=0.1.0
+langchain-core>=0.1.0
 openai
+
+# PDF processing
 PyPDF2
+
+# Environment management
+python-dotenv

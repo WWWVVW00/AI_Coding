@@ -1,20 +1,56 @@
-# Use an official Python runtime as a parent image
-FROM python:3.8-slim
+FROM python:3.13-slim
 
-# Set the working directory in the container
-WORKDIR /usr/src/app
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PIP_NO_CACHE_DIR=1
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Copy the current directory contents into the container
-COPY . .
+WORKDIR /app
 
-# Install any needed packages specified in requirements.txt
+# Install system dependencies including build tools for numpy
+RUN apt-get update && apt-get install -y \
+    curl \
+    build-essential \
+    gcc \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Copy requirements and install dependencies
+COPY requirements.docker.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Make port 5000 available to the world outside this container
-EXPOSE 5000
+# Copy application files
+COPY app.py .
+COPY scripts/start.sh ./start.sh
+COPY .env* ./
 
-# Define environment variable
-ENV FLASK_APP=app.py
+# Copy test and demo files (optional)
+COPY tests/ ./tests/
+COPY examples/ ./examples/
+COPY docs/ ./docs/
 
-# Run app.py when the container launches
-CMD ["flask", "run", "--host=0.0.0.0"]
+# Make start script executable
+RUN chmod +x start.sh
+
+# Create non-root user with home directory
+RUN adduser --disabled-password --gecos '' --home /home/appuser appuser
+
+# Create temp directory for task storage (in production, use Redis/DB)
+RUN mkdir -p /tmp/question_generator && chown -R appuser:appuser /tmp/question_generator
+
+# Change ownership of app directory
+RUN chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
+
+# Expose port
+EXPOSE 8000
+
+# Health check for RESTful API
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Run application with better production settings
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--access-log"]
