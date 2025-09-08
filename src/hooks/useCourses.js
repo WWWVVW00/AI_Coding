@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { coursesAPI } from '../services/apiService.js'; // .js
 
 export function useCourses() {
   const [courses, setCourses] = useState([]);
@@ -18,33 +17,18 @@ export function useCourses() {
   });
 
   const loadCourses = async () => {
+    setLoading(true);
     try {
-<<<<<<< HEAD
-      setLoading(true);
-      const { courses: coursesData } = await coursesAPI.getAll();
-      setCourses(coursesData);
-    } catch (error) {
-      console.error('加载课程失败:', error);
-=======
-      console.log('🔍 加载课程列表...');
-      
-      // 调用真实的后端API而不是Mock API
-      const response = await fetch('/api/courses');
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      console.log('📚 获取到课程数据:', data);
-      
-      setCourses(data.courses || []);
-    } catch (error) {
-      console.error('❌ 加载课程失败:', error);
-      setCourses([]); // 设置为空数组避免undefined
->>>>>>> feat/questionGen
-      throw error;
+      const resp = await fetch('/api/courses');
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      setCourses(Array.isArray(data.courses) ? data.courses : []);
+    } catch (err) {
+      console.error('加载课程失败:', err);
+      setCourses([]);
+      throw err;
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -52,31 +36,15 @@ export function useCourses() {
     e.preventDefault();
     setLoading(true);
     try {
-<<<<<<< HEAD
-      const { course: newCourseData } = await coursesAPI.create(newCourse);
-      setSuccess('课程添加成功！');
-      setShowAddCourse(false);
-      setNewCourse({
-        name: '', code: '', department: '', description: '',
-        credits: 3, semester: 'Fall', year: new Date().getFullYear(), instructor: ''
-      });
-      setCourses(prev => [...prev, newCourseData]); // 立即更新UI
-    } catch (error) {
-      setError(error.message || '添加课程失败');
-=======
-      console.log('➕ 创建新课程:', newCourse);
-      
-      // 确保有认证token
+      // 简单地确保存在一个可用的 token，避免未登录导致 401
       let token = localStorage.getItem('token');
       if (!token || !token.startsWith('test-token-')) {
-        // 创建测试token
         const testUser = { id: 1, username: 'testuser', fullName: 'Test User' };
         token = 'test-token-' + btoa(JSON.stringify(testUser));
         localStorage.setItem('token', token);
       }
-      
-      // 调用真实的后端API
-      const response = await fetch('/api/courses', {
+
+      const resp = await fetch('/api/courses', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -84,12 +52,10 @@ export function useCourses() {
         },
         body: JSON.stringify(newCourse)
       });
-      
-      if (response.ok) {
-        const result = await response.json();
-        console.log('✅ 课程创建成功:', result);
-        
-        setSuccess('課程添加成功！');
+
+      if (resp.ok) {
+        await resp.json().catch(() => ({}));
+        setSuccess && setSuccess('课程添加成功！');
         setShowAddCourse(false);
         setNewCourse({
           name: '',
@@ -103,13 +69,12 @@ export function useCourses() {
         });
         await loadCourses();
       } else {
-        const errorData = await response.json();
-        setError(errorData.message || '添加課程失敗');
+        const errData = await resp.json().catch(() => ({}));
+        setError && setError(errData.message || '添加课程失败');
       }
-    } catch (error) {
-      console.error('❌ 添加課程錯誤:', error);
-      setError('添加課程失敗，請稍後重試');
->>>>>>> feat/questionGen
+    } catch (err) {
+      console.error('添加课程错误:', err);
+      setError && setError('添加课程失败，请稍后重试');
     } finally {
       setLoading(false);
     }

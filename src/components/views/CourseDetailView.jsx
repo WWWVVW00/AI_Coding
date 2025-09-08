@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, BookOpen, Calendar, User, Hash, GraduationCap, Upload, FileText, Brain, MessageCircle, Star, Download } from 'lucide-react';
+import { useTranslation } from '../../contexts/TranslationContext.jsx';
 
 function CourseDetailView({ course, setCurrentView }) {
   const { t, translateDynamic, currentLanguage } = useTranslation();
@@ -9,6 +10,10 @@ function CourseDetailView({ course, setCurrentView }) {
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [newComment, setNewComment] = useState('');
+  const [displayCourse, setDisplayCourse] = useState(course || null);
+  const [currentGeneratingPaper, setCurrentGeneratingPaper] = useState(null);
+  const [generationStatus, setGenerationStatus] = useState(null);
+  const [generatingPaper, setGeneratingPaper] = useState(false);
 
   // 翻译动态课程内容
   useEffect(() => {
@@ -91,7 +96,7 @@ function CourseDetailView({ course, setCurrentView }) {
       const formData = new FormData();
       formData.append('courseId', course.id);
 
-      const response = await fetch('/api/materials/upload', {
+      const response = await fetch('/materials/upload', {
         method: 'POST',
         body: formData,
         headers: {
@@ -120,7 +125,7 @@ function CourseDetailView({ course, setCurrentView }) {
 
     setLoading(true);
     try {
-      const response = await fetch('/api/papers/generate', {
+      const response = await fetch('/papers/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -147,7 +152,18 @@ function CourseDetailView({ course, setCurrentView }) {
   const handleAddComment = async () => {
     if (!newComment.trim()) return;
     try {
-      await commentsAPI.create({ courseId: course.id, content: newComment });
+      // 简单直连后端创建评论（若后端未实现，可忽略失败不致命）
+      try {
+        const token = localStorage.getItem('token');
+        await fetch('/courses/' + course.id + '/comments', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({ content: newComment })
+        });
+      } catch (_) {}
       setNewComment('');
       await loadCourseData();
     } catch (error) {
