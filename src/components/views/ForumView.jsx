@@ -1,6 +1,6 @@
 import React from 'react';
 import { MessageSquare, ArrowLeft } from 'lucide-react';
-import { useTranslation } from '../../contexts/TranslationContext';
+import { useTranslation } from '../../contexts/TranslationContext.jsx'; // .jsx
 
 function ForumView({ setCurrentView }) {
   const { t } = useTranslation();

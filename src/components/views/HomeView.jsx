@@ -1,6 +1,6 @@
 import React from 'react';
 import { BookOpen, FileText, Brain, Zap, Upload, Users } from 'lucide-react';
-import { useTranslation } from '../../contexts/TranslationContext';
+import { useTranslation } from '../../contexts/TranslationContext.jsx'; // .jsx
 
 function HomeView({ 
   user, 

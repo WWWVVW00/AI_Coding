@@ -1,147 +1,104 @@
 import { useState, useRef } from 'react';
-import { materialsAPI, papersAPI } from '../services/api';
+import { materialsAPI, papersAPI } from '../services/apiService.js'; // .js
 
 export function useApp() {
   const [currentView, setCurrentView] = useState('home');
-  const [uploadedFiles, setUploadedFiles] = useState([]);
-  const [generatedPaper, setGeneratedPaper] = useState(null);
-  const [showAnswers, setShowAnswers] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [shareSettings, setShareSettings] = useState({ public: true, allowDownload: true });
-  const [language, setLanguage] = useState('zh');
-  const [paperLanguage, setPaperLanguage] = useState('zh');
-  const [viewMode, setViewMode] = useState('all');
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-
-  // 數據狀態
   const [materials, setMaterials] = useState([]);
   const [papers, setPapers] = useState([]);
   const [loading, setLoading] = useState(false);
-
+  
+  // 这部分状态似乎与课程详情页更相关，可以考虑移动
+  const [generatedPaper, setGeneratedPaper] = useState(null);
+  
   const fileInputRef = useRef(null);
 
-  // 數據加載函數
-  const loadMaterials = async () => {
+  // 简化: 现在materials和papers由课程详情页加载
+  const loadMaterials = async (courseId) => {
     try {
-      const { data } = await materialsAPI.getAll();
+      const { materials: data } = await materialsAPI.getByCourse(courseId);
       setMaterials(data);
     } catch (error) {
-      console.error('加載資料失敗:', error);
+      console.error('加载资料失败:', error);
     }
   };
 
-  const loadPapers = async () => {
+  const loadPapers = async (courseId) => {
     try {
-      const { data } = await papersAPI.getAll();
+      const { papers: data } = await papersAPI.getByCourse(courseId);
       setPapers(data);
     } catch (error) {
-      console.error('加載試卷失敗:', error);
+      console.error('加载试卷失败:', error);
     }
   };
 
-  // 文件上傳處理
+  // 文件上传处理
   const handleFileUpload = async (files, selectedCourse, setError, setSuccess) => {
     if (!selectedCourse) {
-      setError('請先選擇一個課程');
+      setError('请先选择一个课程');
       return;
     }
-    
     setLoading(true);
-    
     try {
-      const uploadPromises = Array.from(files).map(async (file) => {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('courseId', selectedCourse.id);
-        formData.append('title', file.name);
-        formData.append('description', `上傳的文件: ${file.name}`);
-        return await materialsAPI.upload(formData);
+      const formData = new FormData();
+      formData.append('courseId', selectedCourse.id);
+      Array.from(files).forEach(file => {
+          formData.append('files', file);
       });
       
-      const results = await Promise.all(uploadPromises);
-      const successfulUploads = results.filter(r => r.success).map(r => r.data);
+      const response = await materialsAPI.upload(formData);
       
-      if (successfulUploads.length > 0) {
-        setSuccess(`成功上傳 ${successfulUploads.length} 個文件！`);
-        await loadMaterials();
-        setUploadedFiles(prev => [...prev, ...successfulUploads]);
-      } else {
-        setError('文件上傳失敗');
-      }
+      setSuccess(response.message || `成功上传 ${response.materials.length} 个文件！`);
+      await loadMaterials(selectedCourse.id);
     } catch (error) {
-      console.error('文件上傳錯誤:', error);
-      setError('文件上傳失敗，請稍後重試');
+      setError(error.message || '文件上传失败，请稍后重试');
     } finally {
       setLoading(false);
     }
   };
 
-  // 試卷生成處理
+  // 试卷生成处理
   const handleGeneratePaper = async (config, selectedCourse, setError, setSuccess) => {
-    if (uploadedFiles.length === 0) {
-      setError('請先上傳學習資料');
-      return;
+    if (!selectedCourse || !selectedCourse.id) {
+        setError('请选择有效的课程');
+        return;
     }
     
     setLoading(true);
-    
     try {
-      const response = await papersAPI.generate({
-        courseId: selectedCourse.id,
-        materialIds: uploadedFiles.map(f => f.id),
-        questionCount: config.questionCount || 10,
-        difficulty: config.difficulty || 'medium',
-        questionTypes: config.questionTypes || ['multiple_choice', 'short_answer'],
-        language: paperLanguage
-      });
+      const payload = {
+          courseId: selectedCourse.id,
+          title: config.title || `${selectedCourse.name} 智能试卷`,
+          totalQuestions: config.questionCount || 10,
+          difficultyLevel: config.difficulty || 'medium',
+          language: config.language || 'zh',
+          sourceMaterials: config.materialIds || []
+      };
       
-      if (response.success) {
-        setGeneratedPaper(response.data);
-        setSuccess('試卷生成成功！');
-        setCurrentView('paper');
-        await loadPapers();
-      } else {
-        setError(response.message || '試卷生成失敗');
-      }
+      const { paper: newPaper } = await papersAPI.generate(payload);
+      
+      setGeneratedPaper(newPaper);
+      setSuccess('试卷生成成功！');
+      await loadPapers(selectedCourse.id);
+      // 可以在这里切换视图
+      // setCurrentView('paper-detail');
+      
     } catch (error) {
-      console.error('試卷生成錯誤:', error);
-      setError('試卷生成失敗，請稍後重試');
+      setError(error.message || '试卷生成失败，请稍后重试');
     } finally {
       setLoading(false);
     }
   };
 
   return {
-    currentView,
-    setCurrentView,
-    uploadedFiles,
-    setUploadedFiles,
-    generatedPaper,
-    setGeneratedPaper,
-    showAnswers,
-    setShowAnswers,
-    searchQuery,
-    setSearchQuery,
-    shareSettings,
-    setShareSettings,
-    language,
-    setLanguage,
-    paperLanguage,
-    setPaperLanguage,
-    viewMode,
-    setViewMode,
-    currentQuestionIndex,
-    setCurrentQuestionIndex,
-    materials,
-    setMaterials,
-    papers,
-    setPapers,
-    loading,
-    setLoading,
+    currentView, setCurrentView,
+    searchQuery, setSearchQuery,
+    materials, setMaterials,
+    papers, setPapers,
+    loading, setLoading,
+    generatedPaper, setGeneratedPaper,
     fileInputRef,
-    loadMaterials,
-    loadPapers,
-    handleFileUpload,
-    handleGeneratePaper
+    loadMaterials, loadPapers,
+    handleFileUpload, handleGeneratePaper
   };
 }

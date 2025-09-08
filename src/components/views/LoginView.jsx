@@ -1,7 +1,7 @@
 import React from 'react';
 import { BookOpen } from 'lucide-react';
-import LoginModal from '../modals/LoginModal';
-import RegisterModal from '../modals/RegisterModal';
+import LoginModal from '../modals/LoginModal.jsx'; // .jsx
+import RegisterModal from '../modals/RegisterModal.jsx'; // .jsx
 
 function LoginView({ 
   showLogin, 

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Search, BookOpen, ArrowLeft } from 'lucide-react';
-import TranslatableCourseCard from '../common/TranslatableCourseCard';
-import { useTranslation } from '../../contexts/TranslationContext';
+import TranslatableCourseCard from '../common/TranslatableCourseCard.jsx'; // .jsx
+import { useTranslation } from '../../contexts/TranslationContext.jsx'; // .jsx
 
 function CoursesView({ 
   courses, 

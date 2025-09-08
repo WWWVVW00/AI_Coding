@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useTranslation } from '../../contexts/TranslationContext';
+import { useTranslation } from '../../contexts/TranslationContext.jsx'; // .jsx
 import { Languages, Check, Loader2 } from 'lucide-react';
 
 function TranslationControls() {

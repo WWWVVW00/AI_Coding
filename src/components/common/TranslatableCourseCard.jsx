@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, User } from 'lucide-react';
-import { useTranslation } from '../../contexts/TranslationContext';
+import { useTranslation } from '../../contexts/TranslationContext.jsx'; // .jsx
 
 function TranslatableCourseCard({ course, onClick, className = '' }) {
   const { t, currentLanguage, translateDynamic, setIsTranslating } = useTranslation();

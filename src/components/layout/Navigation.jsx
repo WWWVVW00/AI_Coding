@@ -1,8 +1,7 @@
 import React from 'react';
 import { BookOpen, Users } from 'lucide-react';
-import TranslationControls from '../common/TranslationControls';
-import { useTranslation } from '../../contexts/TranslationContext';
-
+import TranslationControls from '../common/TranslationControls.jsx'; // .jsx
+import { useTranslation } from '../../contexts/TranslationContext.jsx'; // .jsx
 function Navigation({ user, handleLogout, setCurrentView }) {
   const { t } = useTranslation();
 

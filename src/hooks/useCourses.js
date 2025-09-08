@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { coursesAPI } from '../services/api';
+import { coursesAPI } from '../services/apiService.js'; // .js
 
 export function useCourses() {
   const [courses, setCourses] = useState([]);
@@ -12,49 +12,38 @@ export function useCourses() {
     department: '',
     description: '',
     credits: 3,
-    semester: 'Sem A',
+    semester: 'Fall',
     year: new Date().getFullYear(),
     instructor: ''
   });
 
-  // 加載課程列表
   const loadCourses = async () => {
     try {
-      const { data } = await coursesAPI.getAll();
-      setCourses(data);
+      setLoading(true);
+      const { courses: coursesData } = await coursesAPI.getAll();
+      setCourses(coursesData);
     } catch (error) {
-      console.error('加載課程失敗:', error);
+      console.error('加载课程失败:', error);
       throw error;
+    } finally {
+        setLoading(false);
     }
   };
 
-  // 添加新課程
   const handleAddCourse = async (e, setError, setSuccess) => {
     e.preventDefault();
     setLoading(true);
-    
     try {
-      const response = await coursesAPI.create(newCourse);
-      if (response.success) {
-        setSuccess('課程添加成功！');
-        setShowAddCourse(false);
-        setNewCourse({
-          name: '',
-          code: '',
-          department: '',
-          description: '',
-          credits: 3,
-          semester: 'Sem A',
-          year: new Date().getFullYear(),
-          instructor: ''
-        });
-        await loadCourses();
-      } else {
-        setError(response.message || '添加課程失敗');
-      }
+      const { course: newCourseData } = await coursesAPI.create(newCourse);
+      setSuccess('课程添加成功！');
+      setShowAddCourse(false);
+      setNewCourse({
+        name: '', code: '', department: '', description: '',
+        credits: 3, semester: 'Fall', year: new Date().getFullYear(), instructor: ''
+      });
+      setCourses(prev => [...prev, newCourseData]); // 立即更新UI
     } catch (error) {
-      console.error('添加課程錯誤:', error);
-      setError('添加課程失敗，請稍後重試');
+      setError(error.message || '添加课程失败');
     } finally {
       setLoading(false);
     }

@@ -1,6 +1,6 @@
 import React from 'react';
 import { X } from 'lucide-react';
-import { useTranslation } from '../../contexts/TranslationContext';
+import { useTranslation } from '../../contexts/TranslationContext.jsx'; // .jsx
 
 function AddCourseModal({ setShowAddCourse, handleAddCourse, newCourse, setNewCourse, loading }) {
   const { t } = useTranslation();

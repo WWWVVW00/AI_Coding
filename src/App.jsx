@@ -1,20 +1,20 @@
 import React, { useEffect } from 'react';
 
-// 導入組件
-import NotificationToast from './components/common/NotificationToast';
-import { TranslationProvider } from './contexts/TranslationContext';
-import Navigation from './components/layout/Navigation';
-import LoginView from './components/views/LoginView';
-import HomeView from './components/views/HomeView';
-import CoursesView from './components/views/CoursesView';
-import CourseDetailView from './components/views/CourseDetailView';
-import ForumView from './components/views/ForumView';
-import AddCourseModal from './components/modals/AddCourseModal';
+// 导入組件
+import NotificationToast from './components/common/NotificationToast.jsx'; // .jsx
+import { TranslationProvider } from './contexts/TranslationContext.jsx'; // .jsx
+import Navigation from './components/layout/Navigation.jsx'; // .jsx
+import LoginView from './components/views/LoginView.jsx'; // .jsx
+import HomeView from './components/views/HomeView.jsx'; // .jsx
+import CoursesView from './components/views/CoursesView.jsx'; // .jsx
+import CourseDetailView from './components/views/CourseDetailView.jsx'; // .jsx
+import ForumView from './components/views/ForumView.jsx'; // .jsx
+import AddCourseModal from './components/modals/AddCourseModal.jsx'; // .jsx
+import { Loader2 } from 'lucide-react'; 
 
-// 導入自定義鉤子
-import { useAuth } from './hooks/useAuth';
-import { useCourses } from './hooks/useCourses';
-import { useApp } from './hooks/useApp';
+import { useAuth } from './hooks/useAuth.js'; // .js
+import { useCourses } from './hooks/useCourses.js'; // .js, 应该是 useCourses.js
+import { useApp } from './hooks/useApp.js'; // .js
 
 function StudyAssistant() {
   // 使用自定義鉤子管理狀態
@@ -22,63 +22,42 @@ function StudyAssistant() {
   const courses = useCourses();
   const app = useApp();
 
-  // 初始化應用
+  // 初始化应用
   useEffect(() => {
-    initializeApp();
+    auth.initializeAuth();
   }, []);
 
-  // 当用户认证状态改变时重新加载数据
+  // 当用户认证状态改变时重新加载课程数据
   useEffect(() => {
-    if (auth.isAuthenticated && auth.user) {
-      loadUserData();
+    if (auth.isAuthenticated) {
+      courses.loadCourses();
+    } else {
+      // 用户登出时清空数据
+      courses.setCourses([]);
+      app.setMaterials([]);
+      app.setPapers([]);
     }
-  }, [auth.isAuthenticated, auth.user]);
-
-  const loadUserData = async () => {
-    try {
-      await Promise.all([
-        courses.loadCourses(),
-        app.loadMaterials(),
-        app.loadPapers()
-      ]);
-    } catch (error) {
-      console.error('加载用户数据失败:', error);
-    }
-  };
-
-  const initializeApp = async () => {
-    try {
-      app.setLoading(true);
-      await auth.initializeAuth();
-      
-      if (auth.isAuthenticated) {
-        await Promise.all([
-          courses.loadCourses(),
-          app.loadMaterials(),
-          app.loadPapers()
-        ]);
-      }
-    } catch (error) {
-      console.error('初始化失敗:', error);
-      auth.setError('應用初始化失敗，請刷新頁面重試');
-    } finally {
-      app.setLoading(false);
-    }
-  };
+  }, [auth.isAuthenticated]);
 
   // 處理課程添加
   const handleAddCourse = (e) => {
     courses.handleAddCourse(e, auth.setError, auth.setSuccess);
   };
-
+  
   // 處理登出
   const handleLogout = () => {
     auth.handleLogout();
-    courses.setCourses([]);
-    app.setMaterials([]);
-    app.setPapers([]);
-    app.setCurrentView('home');
+    app.setCurrentView('home'); // 重置视图
   };
+  
+  // 应用加载中
+  if (auth.loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <Loader2 className="h-16 w-16 animate-spin text-cityu-orange" />
+      </div>
+    );
+  }
 
   // 如果未認證，顯示登錄界面
   if (!auth.isAuthenticated) {
@@ -86,16 +65,12 @@ function StudyAssistant() {
       <>
         <NotificationToast error={auth.error} success={auth.success} />
         <LoginView 
-          showLogin={auth.showLogin}
-          setShowLogin={auth.setShowLogin}
-          showRegister={auth.showRegister}
-          setShowRegister={auth.setShowRegister}
+          showLogin={auth.showLogin} setShowLogin={auth.setShowLogin}
+          showRegister={auth.showRegister} setShowRegister={auth.setShowRegister}
           handleLogin={auth.handleLogin}
-          loginForm={auth.loginForm}
-          setLoginForm={auth.setLoginForm}
+          loginForm={auth.loginForm} setLoginForm={auth.setLoginForm}
           handleRegister={auth.handleRegister}
-          registerForm={auth.registerForm}
-          setRegisterForm={auth.setRegisterForm}
+          registerForm={auth.registerForm} setRegisterForm={auth.setRegisterForm}
           loading={auth.loading}
         />
       </>
@@ -137,7 +112,7 @@ function StudyAssistant() {
           />
         )}
         
-        {app.currentView === 'course-detail' && (
+        {app.currentView === 'course-detail' && courses.selectedCourse && (
           <CourseDetailView 
             course={courses.selectedCourse}
             setCurrentView={app.setCurrentView}
@@ -147,11 +122,8 @@ function StudyAssistant() {
         {app.currentView === 'forum' && (
           <ForumView setCurrentView={app.setCurrentView} />
         )}
-        
-        {/* 其他視圖可以在這裡添加 */}
       </main>
 
-      {/* 模態框 */}
       {courses.showAddCourse && (
         <AddCourseModal 
           setShowAddCourse={courses.setShowAddCourse}

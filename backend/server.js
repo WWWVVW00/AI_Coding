@@ -59,15 +59,15 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // API路由
-app.use('/api/auth', authRoutes);
-app.use('/api/courses', courseRoutes);
-app.use('/api/materials', materialRoutes);
-app.use('/api/papers', paperRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/stats', statsRoutes);
+app.use('/auth', authRoutes);
+app.use('/courses', courseRoutes);
+app.use('/materials', materialRoutes);
+app.use('/papers', paperRoutes);
+app.use('/users', userRoutes);
+app.use('/stats', statsRoutes);
 
 // 健康检查端点
-app.get('/api/health', async (req, res) => {
+app.get('/health', async (req, res) => {
   try {
     const { healthCheck, getDatabaseStats } = require('./config/database');
     const dbHealth = await healthCheck();

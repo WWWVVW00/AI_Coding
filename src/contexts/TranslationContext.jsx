@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import translationService from '../services/translationService';
+import translationService from '../services/translationService.js';
 import en from '../locales/en.json';
 import zhCn from '../locales/zh-cn.json';
 import zhTw from '../locales/zh-tw.json';

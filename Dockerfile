@@ -1,6 +1,6 @@
 # Frontend Dockerfile (Multi-stage build)
 # 开发阶段
-FROM node:20-alpine as development
+FROM node:20-alpine AS development
 
 WORKDIR /app
 
@@ -20,9 +20,15 @@ EXPOSE 5173
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 
 # 构建阶段
-FROM node:20-alpine as build
+FROM node:20-alpine AS build
 
 WORKDIR /app
+
+# 声明一个构建参数，可以由 docker-compose 传入
+ARG VITE_API_URL 
+
+# 将构建参数设置为环境变量，这样 Vite 就能读取到它
+ENV VITE_API_URL=$VITE_API_URL
 
 # 复制 package.json 和 package-lock.json
 COPY package*.json ./
@@ -34,10 +40,11 @@ RUN npm ci
 COPY . .
 
 # 构建应用
+# RUN npm run build 会自动使用上面 ENV 设置的环境变量
 RUN npm run build
 
 # 生产阶段
-FROM nginx:alpine as production
+FROM nginx:alpine AS production
 
 # 复制构建结果到 nginx
 COPY --from=build /app/dist /usr/share/nginx/html
