@@ -21,6 +21,25 @@ services:
       timeout: 20s
       retries: 10
 
+  # 问题生成器 (AI 微服务)
+  question-generator:
+    build:
+      context: ./question_generator
+      dockerfile: Dockerfile
+    container_name: study-assistant-question-gen
+    restart: unless-stopped
+    env_file:
+      - ./question_generator/.env
+    ports:
+      - "8000:8000"
+    networks:
+      - study-assistant-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   # 后端 API 服务
   backend:
     build:
@@ -40,6 +59,8 @@ services:
       - PORT=3001
       - UPLOAD_DIR=./uploads
       - MAX_FILE_SIZE=50MB
+      - QUESTION_GENERATOR_URL=http://question-generator:8000
+      - QUESTION_GENERATOR_TIMEOUT=300000
     ports:
       - "3001:3001"
     volumes:
@@ -49,6 +70,8 @@ services:
       - study-assistant-network
     depends_on:
       database:
+        condition: service_healthy
+      question-generator:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3001/health"]

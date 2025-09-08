@@ -219,12 +219,25 @@ router.post('/upload', authenticateToken, upload.array('files', 10), async (req,
     const userId = req.user.id;
     const files = req.files;
 
+    console.log('📤 文件上传请求:');
+    console.log('- courseId:', courseId, typeof courseId);
+    console.log('- userId:', userId);
+    console.log('- files count:', files?.length);
+    console.log('- req.body:', req.body);
+
     if (!files || files.length === 0) {
       return res.status(400).json({ error: '请选择要上传的文件' });
     }
 
+    if (!courseId) {
+      return res.status(400).json({ error: '缺少课程ID' });
+    }
+
     // 验证课程是否存在
+    console.log('🔍 查询课程是否存在, courseId:', courseId);
     const course = await executeQuery('SELECT id FROM courses WHERE id = ?', [courseId]);
+    console.log('📋 课程查询结果:', course);
+    
     if (course.length === 0) {
       return res.status(404).json({ error: '课程不存在' });
     }
