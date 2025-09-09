@@ -78,6 +78,61 @@ services:
       timeout: 10s
       retries: 3
 
+  question-generator:
+    build: 
+      context: ./question_generator
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      # Required: AI API Configuration
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-3.5-turbo}
+      
+      # Optional: Application Configuration
+      - PORT=${PORT:-8000}
+      - DEBUG=${DEBUG:-false}
+      - PYTHONUNBUFFERED=1
+      
+      # Performance tuning
+      - WORKERS=${WORKERS:-1}
+      
+    volumes:
+      # Optional: Mount logs directory
+      - ./logs:/app/logs
+      
+      # Optional: Mount uploads directory for PDF processing
+      - ./uploads:/app/uploads
+      
+    restart: unless-stopped
+    
+    # Resource limits for better container management
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+    
+    # Health check for RESTful API
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+
 volumes:
   mysql_data:
     driver: local

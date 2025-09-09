@@ -6,7 +6,7 @@ const fs = require('fs-extra');
 const crypto = require('crypto');
 const { executeQuery, executeTransaction, buildPaginationQuery, buildSearchConditions } = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
-const { validateMaterial } = require('../middleware/validation');
+const { validateMaterialUpload } = require('../middleware/validation');
 
 // 配置文件上传
 const storage = multer.diskStorage({
@@ -393,7 +393,7 @@ router.get('/:id/download', async (req, res) => {
 });
 
 // 更新资料信息
-router.put('/:id', authenticateToken, validateMaterial, async (req, res) => {
+router.put('/:id', authenticateToken, validateMaterialUpload, async (req, res) => {
   try {
     const { id } = req.params;
     const { title, description, materialType, year, tags, isPublic } = req.body;

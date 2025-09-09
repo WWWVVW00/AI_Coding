@@ -25,9 +25,7 @@ COPY app.py .
 COPY scripts/start.sh ./start.sh
 COPY .env* ./
 
-# Copy test and demo files (optional)
-COPY tests/ ./tests/
-COPY examples/ ./examples/
+# Copy docs directory
 COPY docs/ ./docs/
 
 # Make start script executable

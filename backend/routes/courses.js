@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { executeQuery, buildPaginationQuery, buildSearchConditions } = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
-const { validateCourse } = require('../middleware/validation');
+const { validateCourseCreation } = require('../middleware/validation');
 
 // 获取所有课程（支持分页和搜索）
 router.get('/', async (req, res) => {
@@ -176,7 +176,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // 创建新课程
-router.post('/', authenticateToken, validateCourse, async (req, res) => {
+router.post('/', authenticateToken, validateCourseCreation, async (req, res) => {
   try {
     const { name, code, department, description, credits, semester, year, instructor } = req.body;
     const userId = req.user.id;
@@ -228,7 +228,7 @@ router.post('/', authenticateToken, validateCourse, async (req, res) => {
 });
 
 // 更新课程信息
-router.put('/:id', authenticateToken, validateCourse, async (req, res) => {
+router.put('/:id', authenticateToken, validateCourseCreation, async (req, res) => {
   try {
     const { id } = req.params;
     const { name, code, department, description, credits, semester, year, instructor } = req.body;
