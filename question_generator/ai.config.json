@@ -1,0 +1,10 @@
+{
+    "超强的ai1": {
+        "type": "openai_compatible",
+        "config": {
+            "api_key": "<KEY>",
+            "model_name": "gpt-3.5-turbo",
+            "base_url": ""
+        }
+    }
+}

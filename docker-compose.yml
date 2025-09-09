@@ -40,6 +40,7 @@ services:
       - PORT=3001
       - UPLOAD_DIR=./uploads
       - MAX_FILE_SIZE=50MB
+      - QUESTION_GENERATOR_URL=http://question-generator:8000
     ports:
       - "3001:3001"
     volumes:
@@ -77,6 +78,30 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+
+  # --- 新增 question-generator 服务 ---
+  question-generator:
+    build:
+      context: ./question_generator
+      dockerfile: Dockerfile
+    container_name: study-assistant-ai
+    restart: unless-stopped
+    environment:
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - GOOGLE_MODEL=${GOOGLE_MODEL:-gemini-pro}
+      - PORT=8000
+    # 注意：这个服务的端口不需要暴露给主机，因为它只在内部网络中被后端调用
+    # 如果需要调试，可以取消下面的注释
+    # ports:
+    #   - "8000:8000"
+    networks:
+      - study-assistant-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
 volumes:
   mysql_data:
