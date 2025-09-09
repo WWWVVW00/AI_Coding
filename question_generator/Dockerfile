@@ -1,6 +1,6 @@
 FROM python:3.13-slim
 
-# Set environment variables
+# 设置环境变量
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PIP_NO_CACHE_DIR=1
@@ -8,7 +8,7 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 
 WORKDIR /app
 
-# Install system dependencies including build tools for numpy
+# 安装系统依赖
 RUN apt-get update && apt-get install -y \
     curl \
     build-essential \
@@ -16,39 +16,38 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
-# Copy requirements and install dependencies
+# 复制并安装Python依赖
 COPY requirements.docker.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application files
+# 复制应用文件
 COPY app.py .
-COPY scripts/start.sh ./start.sh
-COPY .env* ./
+# --- 以下是被注释掉或删除的行 ---
+# COPY scripts/start.sh ./start.sh  <-- 如果您没有这个文件，也注释掉
+# COPY .env* ./                     <-- 这行最好也注释掉，环境变量应该由docker-compose注入
 
-# Copy docs directory
-COPY docs/ ./docs/
+# --- 注释掉不存在的文件夹复制命令 ---
+# COPY tests/ ./tests/
+# COPY examples/ ./examples/
+# COPY docs/ ./docs/
 
-# Make start script executable
-RUN chmod +x start.sh
+# --- 如果您有 start.sh 脚本，可以保留这两行 ---
+# COPY scripts/start.sh ./start.sh
+# RUN chmod +x start.sh
 
-# Create non-root user with home directory
+# 创建非 root 用户
 RUN adduser --disabled-password --gecos '' --home /home/appuser appuser
-
-# Create temp directory for task storage (in production, use Redis/DB)
-RUN mkdir -p /tmp/question_generator && chown -R appuser:appuser /tmp/question_generator
-
-# Change ownership of app directory
 RUN chown -R appuser:appuser /app
 
-# Switch to non-root user
+# 切换到非 root 用户
 USER appuser
 
-# Expose port
+# 暴露端口
 EXPOSE 8000
 
-# Health check for RESTful API
+# 健康检查
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Run application with better production settings
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--access-log"]
+# 启动命令
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]

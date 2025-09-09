@@ -40,6 +40,7 @@ services:
       - PORT=3001
       - UPLOAD_DIR=./uploads
       - MAX_FILE_SIZE=50MB
+      - QUESTION_GENERATOR_URL=http://question-generator:8000
     ports:
       - "3001:3001"
     volumes:

@@ -5,10 +5,16 @@ python-multipart
 pydantic>=2.0.0
 
 # AI dependencies - simplified to avoid conflicts
-langchain-openai
+# langchain-text-splitters
+# langchain-core
+# openai
+
+# use gemini
+langchain
+langchain-google-genai
+google-generativeai
 langchain-text-splitters
-langchain-core
-openai
+langchain-openai
 
 # PDF processing
 PyPDF2
