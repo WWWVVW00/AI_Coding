@@ -101,8 +101,15 @@ export const coursesAPI = {
 // 学习资料 API
 export const materialsAPI = {
   getByCourse: (courseId, params = {}) => {
-      const query = new URLSearchParams(params).toString();
-      return apiFetch(`/materials/course/${courseId}?${query}`);
+      // 使用 URLSearchParams 来构建所有查询参数
+      const searchParams = new URLSearchParams(params);
+      // 将 courseId 添加到参数中
+      // searchParams.set('courseId', courseId); // 错误！materials 的路由是 /materials/course/:courseId
+      const query = searchParams.toString();
+      // materials 的路由结构是 /materials/course/:courseId，所以 courseId 在路径中
+      // 如果 query 为空，则只返回路径；否则，附加查询字符串
+      const endpoint = `/materials/course/${courseId}${query ? `?${query}` : ''}`;
+      return apiFetch(endpoint);
   },
   upload: (formData) => apiFetch('/materials/upload', {
     method: 'POST',
@@ -111,11 +118,18 @@ export const materialsAPI = {
   }),
 };
 
+
 // 试卷 API
 export const papersAPI = {
   getByCourse: (courseId, params = {}) => {
-      const query = new URLSearchParams(params).toString();
-      return apiFetch(`/papers?courseId=${courseId}&${query}`);
+      // 使用 URLSearchParams 来构建所有查询参数
+      const searchParams = new URLSearchParams(params);
+      // 将 courseId 添加到参数中
+      searchParams.set('courseId', courseId);
+      const query = searchParams.toString();
+      // papers 的路由结构是 /papers?courseId=...
+      const endpoint = `/papers?${query}`;
+      return apiFetch(endpoint);
   },
   generate: (config) => apiFetch('/papers/generate', {
     method: 'POST',

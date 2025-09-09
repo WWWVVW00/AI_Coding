@@ -15,12 +15,14 @@ import { Loader2 } from 'lucide-react';
 import { useAuth } from './hooks/useAuth.js'; // .js
 import { useCourses } from './hooks/useCourses.js'; // .js, 应该是 useCourses.js
 import { useApp } from './hooks/useApp.js'; // .js
+import { useWebSocket } from './hooks/useWebSocket.js'; // 引入 hook
 
 function StudyAssistant() {
-  // 使用自定義鉤子管理狀態
   const auth = useAuth();
   const courses = useCourses();
   const app = useApp();
+
+  const { lastMessage } = useWebSocket(auth.user?.id);
 
   // 初始化应用
   useEffect(() => {
@@ -38,6 +40,24 @@ function StudyAssistant() {
       app.setPapers([]);
     }
   }, [auth.isAuthenticated]);
+
+  useEffect(() => {
+    if (lastMessage) {
+      const { type, message, paper } = lastMessage;
+      
+      if (type === 'PAPER_GENERATION_SUCCESS') {
+        auth.setSuccess(message); // 显示成功通知
+        // 如果当前正在查看该课程，则重新加载数据
+        if (app.currentView === 'course-detail' && courses.selectedCourse?.id === paper.course_id) {
+           // 触发 CourseDetailView 重新加载数据 (更好的方式是让 CourseDetailView 自己处理)
+           // 简单起见，这里可以强制刷新课程列表，虽然不是最优
+           courses.loadCourses();
+        }
+      } else if (type === 'PAPER_GENERATION_FAILED') {
+        auth.setError(message); // 显示失败通知
+      }
+    }
+  }, [lastMessage]); // 依赖 lastMessage
 
   // 處理課程添加
   const handleAddCourse = (e) => {

@@ -180,39 +180,34 @@ class TranslationService {
 
   // 主翻译方法 - 简化版本
   async translate(text, toLang = 'en') {
-    if (!text || text.trim() === '') {
+    if (!text || typeof text !== 'string' || text.trim() === '') {
       return text;
     }
-
-    // 检测源语言
-    const fromLang = this.detectLanguage(text);
     
-    // 如果目标语言和源语言相同，直接返回
-    if (fromLang === toLang) {
-      return text;
+    // 如果是中文环境，不需要翻译（这是一个简化，实际可能需要更复杂的逻辑）
+    if (toLang.startsWith('zh')) {
+        return text;
     }
 
-    // 检查缓存
-    const cacheKey = this.getCacheKey(text, fromLang, toLang);
+    const cacheKey = this.getCacheKey(text, 'auto', toLang);
     if (this.cache.has(cacheKey)) {
       return this.cache.get(cacheKey);
     }
 
     try {
-      // 转换语言代码为Google翻译支持的格式
-      const googleFromLang = fromLang === 'zh-cn' ? 'zh' : fromLang;
-      const googleToLang = toLang === 'zh-cn' ? 'zh' : (toLang === 'zh-tw' ? 'zh-TW' : toLang);
+      // 调用我们自己的后端翻译API
+      const response = await apiFetch('/translate', {
+          method: 'POST',
+          body: JSON.stringify({ text, toLang }),
+      });
       
-      const translatedText = await this.translateWithGoogle(text, googleFromLang, googleToLang);
-      
-      // 缓存翻译结果
+      const translatedText = response.translatedText;
       this.cache.set(cacheKey, translatedText);
-      
       return translatedText;
+
     } catch (error) {
       console.error('翻译失败:', error);
-      // 翻译失败时返回原文
-      return text;
+      return text; // 失败时返回原文
     }
   }
 

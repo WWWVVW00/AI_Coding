@@ -5,6 +5,7 @@ const rateLimit = require('express-rate-limit');
 const path = require('path');
 const fs = require('fs-extra');
 require('dotenv').config();
+const { setupWebSocket } = require('./config/websocketManager');
 
 const { testConnection, cleanupExpiredData } = require('./config/database');
 
@@ -15,6 +16,7 @@ const materialRoutes = require('./routes/materials');
 const paperRoutes = require('./routes/papers');
 const userRoutes = require('./routes/users');
 const statsRoutes = require('./routes/stats');
+const translateRoutes = require('./routes/translate'); // 新增
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -65,6 +67,7 @@ app.use('/materials', materialRoutes);
 app.use('/papers', paperRoutes);
 app.use('/users', userRoutes);
 app.use('/stats', statsRoutes);
+app.use('/translate', translateRoutes); // 新增
 
 // 健康检查端点
 app.get('/health', async (req, res) => {
@@ -155,7 +158,7 @@ async function startServer() {
     }
     
     // 启动服务器
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       console.log(`🚀 服务器运行在端口 ${PORT}`);
       console.log(`📊 健康检查: http://localhost:${PORT}/api/health`);
       console.log(`📚 API文档: http://localhost:${PORT}/api/docs`);
@@ -173,6 +176,8 @@ async function startServer() {
         setInterval(cleanupExpiredData, 24 * 60 * 60 * 1000);
       }, msUntil2AM);
     });
+
+    setupWebSocket(server);
     
   } catch (error) {
     console.error('❌ 服务器启动失败:', error);

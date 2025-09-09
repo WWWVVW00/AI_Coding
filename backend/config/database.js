@@ -10,16 +10,14 @@ const dbConfig = {
   database: process.env.DB_NAME || 'study_assistant',
   charset: 'utf8mb4',
   timezone: '+08:00',
-  acquireTimeout: 60000,
-  timeout: 60000,
-  reconnect: true,
+  
   // 连接池配置
-  connectionLimit: 10,
-  queueLimit: 0,
-  // 处理断开连接
-  handleDisconnects: true
+  waitForConnections: true, // 在没有可用连接时等待，而不是立即抛出错误
+  connectionLimit: 10,      // 连接池中的最大连接数
+  queueLimit: 0,            // 排队请求的最大数量（0表示无限制）
+  acquireTimeout: 60000,    // 获取连接的超时时间（毫秒）
+  connectTimeout: 60000,     // 建立新连接的超时时间 (mysql2 使用 connectTimeout)
 };
-
 // 创建连接池
 const pool = mysql.createPool(dbConfig);
 

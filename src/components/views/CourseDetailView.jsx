@@ -12,7 +12,8 @@ function CourseDetailView({ course, setCurrentView }) {
   const [loading, setLoading] = useState(false);
   const [newComment, setNewComment] = useState('');
   const [displayCourse, setDisplayCourse] = useState(course);
-
+  const [generating, setGenerating] = useState(false);
+  
   // 翻译动态课程内容
   useEffect(() => {
     if (!course) return;
@@ -87,21 +88,30 @@ function CourseDetailView({ course, setCurrentView }) {
       return;
     }
 
-    setLoading(true);
+    setGenerating(true); // 开始生成
     try {
+      // API 现在会立即返回 202
       await papersAPI.generate({
         courseId: course.id,
         title: `${course.name} - 智能生成试卷`,
         totalQuestions: 10,
-        materialIds: materials.map(m => m.id)
+        sourceMaterials: materials.map(m => m.id),
+        // 其他参数...
+        isPublic: true
       });
-      await loadCourseData();
+      // 可以在这里显示一个临时通知
+      alert('试卷生成任务已提交！完成后您会收到通知。');
     } catch (error) {
       console.error(t('courseDetail.error.generateError'), error);
-    } finally {
-      setLoading(false);
+      setGenerating(false); // 出错时重置状态
     }
   };
+
+  useEffect(() => {
+    if(loading === false) {
+      setGenerating(false);
+    }
+  }, [loading]);
   
   const handleAddComment = async () => {
     if (!newComment.trim()) return;
@@ -266,10 +276,10 @@ function CourseDetailView({ course, setCurrentView }) {
                   </div>
                   <button
                     onClick={handleGeneratePaper}
-                    disabled={loading || materials.length === 0}
-                    className="w-full px-4 py-2 bg-cityu-gradient text-white rounded-lg hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    disabled={loading || materials.length === 0 || generating} // 使用新状态
+                    className="..."
                   >
-                    {loading ? t('courseDetail.overview.generating') : t('courseDetail.overview.generateButton')}
+                    {generating ? t('courseDetail.overview.generating') : t('courseDetail.overview.generateButton')}
                   </button>
                 </div>
               </div>
