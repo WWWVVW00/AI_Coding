@@ -12,29 +12,38 @@ const { authenticateToken, optionalAuth } = require('../middleware/auth');
 const { validatePaperGeneration } = require('../middleware/validation');
 
 /**
- * 辅助函数：根据提供的资料ID数组，读取文件内容并合并成一个字符串。
+ * 辅助函数：根据提供的资料ID数组，获取材料信息，包括文本内容和PDF文件
  * @param {number[]} materialIds - 学习资料的ID数组
- * @returns {Promise<string>} - 合并后的文本内容
+ * @returns {Promise<{textContent: string, pdfFiles: Array}>} - 返回文本内容和PDF文件信息
  */
-async function getMaterialsText(materialIds) {
+async function getMaterialsData(materialIds) {
   if (!materialIds || materialIds.length === 0) {
-    return "";
+    return { textContent: "", pdfFiles: [] };
   }
   
   // 查询数据库获取文件路径
   const materials = await executeQuery(
-    `SELECT file_path, file_type FROM materials WHERE id IN (?)`,
+    `SELECT id, file_path, file_type, file_name FROM materials WHERE id IN (?)`,
     [materialIds]
   );
   
   let combinedText = "";
+  let pdfFiles = [];
 
   for (const material of materials) {
     try {
       // 检查文件是否存在
       await fs.access(material.file_path);
-      // 目前仅支持读取纯文本文件，未来可扩展
-      if (['txt', 'md'].includes(material.file_type)) {
+      
+      if (material.file_type === 'pdf') {
+        // PDF文件直接保存路径，后续上传到生成服务
+        pdfFiles.push({
+          id: material.id,
+          filePath: material.file_path,
+          originalName: material.file_name || `material_${material.id}.pdf`
+        });
+      } else if (['txt', 'md'].includes(material.file_type)) {
+        // 文本文件读取内容
         const text = await fs.readFile(material.file_path, 'utf8');
         combinedText += `--- START OF MATERIAL ---\n${text}\n--- END OF MATERIAL ---\n\n`;
       }
@@ -43,7 +52,8 @@ async function getMaterialsText(materialIds) {
       // 即使某个文件读取失败，也继续处理其他文件
     }
   }
-  return combinedText;
+  
+  return { textContent: combinedText, pdfFiles };
 }
 
 /**
@@ -88,27 +98,64 @@ router.post('/generate', authenticateToken, validatePaperGeneration, async (req,
     } = req.body;
     const userId = req.user.id;
 
-    // 1. 从文件系统中获取学习资料的文本内容
-    const materialsText = await getMaterialsText(sourceMaterials);
-    if (!materialsText && sourceMaterials && sourceMaterials.length > 0) {
-      return res.status(400).json({ error: '无法从提供的资料中提取可读的文本内容。' });
+    // 1. 从文件系统中获取学习资料数据（文本内容和PDF文件）
+    const { textContent, pdfFiles } = await getMaterialsData(sourceMaterials);
+    
+    // 检查是否有可用的材料
+    if (!textContent && pdfFiles.length === 0 && sourceMaterials && sourceMaterials.length > 0) {
+      return res.status(400).json({ error: '无法从提供的资料中提取可读的内容。' });
     }
-    const generationInput = materialsText || '通用知识';
 
-    // 2. 异步调用 Python AI 服务提交生成任务
-    const aiServiceUrl = `${process.env.QUESTION_GENERATOR_URL}/tasks/generate`;
-    console.log(`[AI] 正在调用: ${aiServiceUrl}`);
+    let taskId;
+    let aiServiceUrl;
 
-    const submitResponse = await axios.post(aiServiceUrl, {
-      materials: generationInput.substring(0, 20000), // 限制上下文长度
-      num_questions: totalQuestions
-    });
+    // 2. 根据材料类型选择合适的API端点
+    if (pdfFiles.length > 0) {
+      // 优先使用PDF上传API（目前只支持单个PDF文件）
+      const pdfFile = pdfFiles[0]; // 取第一个PDF文件
+      aiServiceUrl = `${process.env.QUESTION_GENERATOR_URL}/tasks/generate/pdf`;
+      console.log(`[AI] 正在调用PDF上传API: ${aiServiceUrl}`);
 
-    const taskId = submitResponse.data.task_id;
+      const FormData = require('form-data');
+      const form = new FormData();
+      
+      // 读取PDF文件并添加到表单
+      const pdfStream = require('fs').createReadStream(pdfFile.filePath);
+      form.append('pdf_file', pdfStream, {
+        filename: pdfFile.originalName,
+        contentType: 'application/pdf'
+      });
+      form.append('num_questions', totalQuestions.toString());
+
+      const submitResponse = await axios.post(aiServiceUrl, form, {
+        headers: {
+          ...form.getHeaders(),
+        },
+        maxBodyLength: Infinity,
+        maxContentLength: Infinity
+      });
+
+      taskId = submitResponse.data.task_id;
+      console.log(`[AI] PDF任务已提交，ID: ${taskId}, 文件: ${pdfFile.originalName}`);
+      
+    } else {
+      // 使用文本API
+      aiServiceUrl = `${process.env.QUESTION_GENERATOR_URL}/tasks/generate`;
+      console.log(`[AI] 正在调用文本API: ${aiServiceUrl}`);
+      
+      const generationInput = textContent || '通用知识';
+      const submitResponse = await axios.post(aiServiceUrl, {
+        materials: generationInput.substring(0, 20000), // 限制上下文长度
+        num_questions: totalQuestions
+      });
+
+      taskId = submitResponse.data.task_id;
+      console.log(`[AI] 文本任务已提交，ID: ${taskId}`);
+    }
+
     if (!taskId) {
       throw new Error('AI服务未能返回有效的任务ID');
     }
-    console.log(`[AI] 任务已提交，ID: ${taskId}`);
 
     // 3. 轮询AI服务获取任务状态
     let taskStatus;
