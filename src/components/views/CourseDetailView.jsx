@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, BookOpen, Calendar, User, Hash, GraduationCap, Upload, FileText, Brain, MessageCircle, Star, Download, Lock, Trash2, KeyRound, Languages } from 'lucide-react';
 import { useTranslation } from '../../contexts/TranslationContext.jsx';
-import { materialsAPI, papersAPI, commentsAPI } from '../../services/apiService.js';
+import { materialsAPI, papersAPI } from '../../services/apiService.js';
 
 function CourseDetailView({ user, course, setCurrentView }) {
   const { t, translateDynamic, currentLanguage, supportedLanguages } = useTranslation();
@@ -14,7 +14,6 @@ function CourseDetailView({ user, course, setCurrentView }) {
   const [activeTab, setActiveTab] = useState('overview');
   const [materials, setMaterials] = useState([]);
   const [sharedPapers, setSharedPapers] = useState([]);
-  const [comments, setComments] = useState([]);
   const [displayPapers, setDisplayPapers] = useState([]);
   
   // UI State
@@ -25,7 +24,6 @@ function CourseDetailView({ user, course, setCurrentView }) {
   const [selectedMaterials, setSelectedMaterials] = useState([]);
   const [isPublicUpload, setIsPublicUpload] = useState(true);
   const [isPublicPaper, setIsPublicPaper] = useState(false); // Default to private
-  const [newComment, setNewComment] = useState('');
 
   useEffect(() => {
     setPaperTitle(`${course.name} - 练习题`);
