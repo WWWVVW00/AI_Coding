@@ -10,9 +10,6 @@ function CourseDetailView({ user, course, setCurrentView }) {
   const [activeTab, setActiveTab] = useState('overview');
   const [materials, setMaterials] = useState([]);
   const [sharedPapers, setSharedPapers] = useState([]);
-  const [comments, setComments] = useState([]);
-  
-  // UI State
   const [loading, setLoading] = useState(false);
   const [displayCourse, setDisplayCourse] = useState(course);
 
@@ -50,7 +47,7 @@ function CourseDetailView({ user, course, setCurrentView }) {
     try {
       const [materialsRes, papersRes] = await Promise.all([
         materialsAPI.getByCourse(course.id),
-        papersAPI.getByCourse(course.id),
+        papersAPI.getByCourse(course.id)
       ]);
       setMaterials(materialsRes.materials || []);
       setSharedPapers(papersRes.papers || []);
@@ -133,40 +130,8 @@ function CourseDetailView({ user, course, setCurrentView }) {
       setLoading(false);
     }
   };
-
-  const handleDeleteMaterial = async (materialId) => {
-    if (window.confirm('您确定要删除这份学习资料吗？此操作无法撤销。')) {
-      try {
-        await materialsAPI.delete(materialId);
-        await loadCourseData();
-      } catch (error) {
-        console.error('删除资料失败:', error);
-        alert(`删除失败: ${error.message}`);
-      }
-    }
-  };
-
-  const handleDeletePaper = async (paperId) => {
-    if (window.confirm('您确定要删除这份试卷吗？此操作无法撤销。')) {
-      try {
-        await papersAPI.delete(paperId);
-        await loadCourseData();
-      } catch (error) {
-        console.error('删除试卷失败:', error);
-        alert(`删除失败: ${error.message}`);
-      }
-    }
-  };
-
-  // ***** 核心修改：新的下载处理函数 *****
-  const handleDownloadMaterial = async (materialId) => {
-    try {
-      await materialsAPI.download(materialId);
-    } catch (error) {
-      // 错误已在 apiService 中 alert
-      console.error('下载失败:', error);
-    }
-  };
+  
+  // 评论相关逻辑已移除
 
   const handleDownloadPaper = async (paperId, includeAnswers) => {
     try {
@@ -210,10 +175,37 @@ function CourseDetailView({ user, course, setCurrentView }) {
       <div className="bg-white rounded-lg shadow-sm">
         <div className="border-b border-gray-200">
           <nav className="flex space-x-8 px-6">
-            <button onClick={() => setActiveTab('overview')} className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'overview' ? 'border-cityu-orange text-cityu-orange' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>{t('courseDetail.tabs.overview')}</button>
-            <button onClick={() => setActiveTab('materials')} className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'materials' ? 'border-cityu-orange text-cityu-orange' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>{t('courseDetail.tabs.materials')} ({materials.length})</button>
-            <button onClick={() => setActiveTab('papers')} className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'papers' ? 'border-cityu-orange text-cityu-orange' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>{t('courseDetail.tabs.papers')} ({sharedPapers.length})</button>
-            <button onClick={() => setActiveTab('comments')} className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'comments' ? 'border-cityu-orange text-cityu-orange' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>{t('courseDetail.tabs.comments')} ({comments.length})</button>
+            <button
+              onClick={() => setActiveTab('overview')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'overview'
+                  ? 'border-cityu-orange text-cityu-orange'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              {t('courseDetail.tabs.overview')}
+            </button>
+            <button
+              onClick={() => setActiveTab('materials')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'materials'
+                  ? 'border-cityu-orange text-cityu-orange'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              {t('courseDetail.tabs.materials')} ({materials.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('papers')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'papers'
+                  ? 'border-cityu-orange text-cityu-orange'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              {t('courseDetail.tabs.papers')} ({sharedPapers.length})
+            </button>
+            {/* 评论 Tab 已移除 */}
           </nav>
         </div>
 
@@ -319,11 +311,8 @@ function CourseDetailView({ user, course, setCurrentView }) {
               )}
             </div>
           )}
-
-          {/* Comments Tab */}
-          {activeTab === 'comments' && (
-             <div className="text-center py-12"><MessageCircle className="h-16 w-16 mx-auto text-gray-300 mb-4" /><h3 className="text-lg font-medium text-gray-900 mb-2">{t('courseDetail.comments.emptyTitle')}</h3><p className="text-gray-500">{t('courseDetail.comments.emptyDescription')}</p></div>
-          )}
+          {/* ... 其他 Tab 内容 ... */}
+          {/* 评论区已移除 */}
         </div>
       </div>
     </div>
