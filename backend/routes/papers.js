@@ -355,6 +355,7 @@ router.post('/generate', authenticateToken, validatePaperGeneration, async (req,
 // --- [读取] 获取试卷列表（支持分页、搜索、筛选） ---
 router.get('/', optionalAuth, async (req, res, next) => {
   try {
+    const userId = req.user?.id;
     const { 
       page = 1, limit = 20, search = '', courseId = '', difficulty = '',
       sort = 'created_at', order = 'DESC'
@@ -366,39 +367,53 @@ router.get('/', optionalAuth, async (req, res, next) => {
       FROM generated_papers p
       JOIN users u ON p.created_by = u.id
       JOIN courses c ON p.course_id = c.id
-      WHERE p.is_public = TRUE
     `;
     const params = [];
+    const conditions = [];
+
+    if (userId) {
+      // 登录用户：看公开的 + 自己的
+      conditions.push(`(p.is_public = TRUE OR p.created_by = ?)`);
+      params.push(userId);
+    } else {
+      conditions.push(`p.is_public = TRUE`);
+    }
 
     if (search) {
       const searchConditions = buildSearchConditions(['p.title', 'p.description'], search);
-      baseQuery += ` AND ${searchConditions.where}`;
+      conditions.push(searchConditions.where);
       params.push(...searchConditions.params);
     }
     if (courseId) {
-      baseQuery += ` AND p.course_id = ?`;
+      conditions.push(`p.course_id = ?`);
       params.push(courseId);
     }
     if (difficulty) {
-      baseQuery += ` AND p.difficulty_level = ?`;
+      conditions.push(`p.difficulty_level = ?`);
       params.push(difficulty);
     }
+
+    baseQuery += ' WHERE ' + conditions.join(' AND ');
 
     const validSorts = ['title', 'created_at', 'download_count', 'like_count', 'view_count'];
     const sortField = validSorts.includes(sort) ? `p.${sort}` : 'p.created_at';
     const sortOrder = ['ASC', 'DESC'].includes(order.toUpperCase()) ? order.toUpperCase() : 'DESC';
 
-    const paginatedQuery = buildPaginationQuery(baseQuery, page, limit, `${sortField} ${sortOrder}`);
+    const paginatedQuery = buildPaginationQuery(baseQuery, page, limit, `p.${sort} ${sortOrder}`);
     const papers = await executeQuery(paginatedQuery, params);
 
     // 获取总数
     // 获取总数
-    let countQuery = `SELECT COUNT(DISTINCT p.id) as total FROM generated_papers p WHERE p.is_public = TRUE`;
-    
-    // --- 修改点：在动态添加 AND 条件之前，先加一个空格 ---
-    const conditions = [];
+    let countQuery = `SELECT COUNT(DISTINCT p.id) as total FROM generated_papers p`;
     const countParams = [];
-
+    const countConditions = [];
+    
+    if (userId) {
+      countConditions.push(`(p.is_public = TRUE OR p.created_by = ?)`);
+      countParams.push(userId);
+    } else {
+      countConditions.push(`p.is_public = TRUE`);
+    }
     if (search) {
       const searchConditions = buildSearchConditions(['p.title', 'p.description'], search);
       conditions.push(searchConditions.where);
@@ -412,10 +427,12 @@ router.get('/', optionalAuth, async (req, res, next) => {
       conditions.push('p.difficulty_level = ?');
       countParams.push(difficulty);
     }
-    
-    if (conditions.length > 0) {
-      // 这里确保了每个 AND 前面都有空格
-      countQuery += ' AND ' + conditions.join(' AND ');
+    if (courseId) {
+      countConditions.push('p.course_id = ?');
+      countParams.push(courseId);
+    }
+    if (countConditions.length > 0) {
+      countQuery += ' WHERE ' + countConditions.join(' AND ');
     }
 
     const [{ total }] = await executeQuery(countQuery, countParams);

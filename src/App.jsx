@@ -114,6 +114,7 @@ function StudyAssistant() {
         
         {app.currentView === 'course-detail' && courses.selectedCourse && (
           <CourseDetailView 
+            user={auth.user}
             course={courses.selectedCourse}
             setCurrentView={app.setCurrentView}
           />

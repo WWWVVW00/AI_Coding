@@ -5,7 +5,7 @@ const path = require('path');
 const fs = require('fs-extra');
 const crypto = require('crypto');
 const { executeQuery, executeTransaction, buildPaginationQuery, buildSearchConditions } = require('../config/database');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, optionalAuth } = require('../middleware/auth');
 const { validateMaterialUpload } = require('../middleware/validation');
 
 // 配置文件上传
@@ -64,9 +64,10 @@ function calculateFileHash(filePath) {
 }
 
 // 获取课程的所有资料
-router.get('/course/:courseId', async (req, res) => {
+router.get('/course/:courseId', optionalAuth, async (req, res) => { // <-- 使用 optionalAuth
   try {
     const { courseId } = req.params;
+    const userId = req.user?.id; // <-- 获取当前用户ID (可能为 undefined)
     const { 
       page = 1, 
       limit = 20, 
@@ -90,11 +91,20 @@ router.get('/course/:courseId', async (req, res) => {
       JOIN users u ON m.uploaded_by = u.id
       JOIN courses c ON m.course_id = c.id
       LEFT JOIN user_ratings ur ON ur.item_type = 'material' AND ur.item_id = m.id
-      WHERE m.course_id = ? AND m.is_public = TRUE
+      WHERE m.course_id = ? 
     `;
 
+    // --- 核心逻辑修改：动态构建 WHERE 条件 ---
     const params = [courseId];
-
+    
+    let visibilityCondition = 'm.is_public = TRUE';
+    if (userId) {
+      // 如果用户已登录，显示公开的 OR 用户自己的私有资料
+      visibilityCondition = '(m.is_public = TRUE OR m.uploaded_by = ?)';
+      params.push(userId);
+    }
+    baseQuery += ` AND ${visibilityCondition}`;
+    
     // 搜索条件
     if (search) {
       const searchConditions = buildSearchConditions(['m.title', 'm.description'], search);
@@ -102,13 +112,11 @@ router.get('/course/:courseId', async (req, res) => {
       params.push(...searchConditions.params);
     }
 
-    // 类型筛选
+    // 类型和年份筛选 (保持不变)
     if (type) {
       baseQuery += ` AND m.material_type = ?`;
       params.push(type);
     }
-
-    // 年份筛选
     if (year) {
       baseQuery += ` AND m.year = ?`;
       params.push(parseInt(year));
@@ -116,7 +124,7 @@ router.get('/course/:courseId', async (req, res) => {
 
     baseQuery += ` GROUP BY m.id`;
 
-    // 排序
+    // 排序 (保持不变)
     const validSorts = ['title', 'created_at', 'download_count', 'average_rating', 'file_size'];
     const validOrders = ['ASC', 'DESC'];
     const sortField = validSorts.includes(sort) ? sort : 'created_at';
@@ -131,24 +139,31 @@ router.get('/course/:courseId', async (req, res) => {
 
     const materials = await executeQuery(paginatedQuery, params);
 
-    // 获取总数
-    const countQuery = `
+    // --- 同样修改获取总数的查询 ---
+    let countQuery = `
       SELECT COUNT(*) as total
       FROM materials m
-      WHERE m.course_id = ? AND m.is_public = TRUE
-      ${search ? `AND (m.title LIKE ? OR m.description LIKE ?)` : ''}
-      ${type ? `AND m.material_type = ?` : ''}
-      ${year ? `AND m.year = ?` : ''}
+      WHERE m.course_id = ?
     `;
-
     const countParams = [courseId];
+    
+    if (userId) {
+      countQuery += ` AND (m.is_public = TRUE OR m.uploaded_by = ?)`;
+      countParams.push(userId);
+    } else {
+      countQuery += ` AND m.is_public = TRUE`;
+    }
+
     if (search) {
+      countQuery += ` AND (m.title LIKE ? OR m.description LIKE ?)`;
       countParams.push(`%${search}%`, `%${search}%`);
     }
     if (type) {
+      countQuery += ` AND m.material_type = ?`;
       countParams.push(type);
     }
     if (year) {
+      countQuery += ` AND m.year = ?`;
       countParams.push(parseInt(year));
     }
 
@@ -224,10 +239,26 @@ router.post('/upload', authenticateToken, upload.array('files', 10), async (req,
     // 验证课程是否存在
     const course = await executeQuery('SELECT id FROM courses WHERE id = ?', [courseId]);
     if (course.length === 0) {
+      // 如果课程不存在，先清理已上传的临时文件
+      files.forEach(file => fs.unlink(file.path).catch(console.error));
       return res.status(404).json({ error: '课程不存在' });
     }
 
-    const uploadedMaterials = [];
+    // --- 新增：文件名重复检查 ---
+    for (const file of files) {
+      const { originalname } = file;
+      const existingMaterial = await executeQuery(
+        'SELECT id FROM materials WHERE course_id = ? AND file_name = ?',
+        [courseId, originalname]
+      );
+      
+      if (existingMaterial.length > 0) {
+        // 如果文件已存在，抛出错误，这将由下方的 catch 块捕获
+        throw new Error(`文件'${originalname}'已存在于此课程中。`);
+      }
+    }
+    // --- 检查结束 ---
+
     const queries = [];
 
     for (let i = 0; i < files.length; i++) {
@@ -236,7 +267,7 @@ router.post('/upload', authenticateToken, upload.array('files', 10), async (req,
       // 计算文件哈希
       const fileHash = await calculateFileHash(file.path);
       
-      // 检查文件是否已存在
+      // 检查文件是否已存在于文件存储中
       const existingFile = await executeQuery(
         'SELECT id FROM file_storage WHERE file_hash = ?',
         [fileHash]
@@ -245,25 +276,19 @@ router.post('/upload', authenticateToken, upload.array('files', 10), async (req,
       let fileStorageId;
       
       if (existingFile.length > 0) {
-        // 文件已存在，增加引用计数
         fileStorageId = existingFile[0].id;
         queries.push({
           sql: 'UPDATE file_storage SET reference_count = reference_count + 1 WHERE id = ?',
           params: [fileStorageId]
         });
       } else {
-        // 新文件，插入文件存储记录
         const fileStorageResult = await executeQuery(`
           INSERT INTO file_storage (
             file_hash, original_name, file_path, file_size, 
             mime_type, storage_type, reference_count
           ) VALUES (?, ?, ?, ?, ?, 'local', 1)
         `, [
-          fileHash,
-          file.originalname,
-          file.path,
-          file.size,
-          file.mimetype
+          fileHash, file.originalname, file.path, file.size, file.mimetype
         ]);
         fileStorageId = fileStorageResult.insertId;
       }
@@ -278,39 +303,34 @@ router.post('/upload', authenticateToken, upload.array('files', 10), async (req,
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `,
         params: [
-          courseId,
-          userId,
-          title || file.originalname,
-          description || '',
-          file.originalname,
-          file.path,
-          file.size,
+          courseId, userId, title || file.originalname, description || '',
+          file.originalname, file.path, file.size,
           path.extname(file.originalname).toLowerCase().slice(1),
-          file.mimetype,
-          materialType || 'other',
-          year || new Date().getFullYear(),
+          file.mimetype, materialType || 'other', year || new Date().getFullYear(),
           tags ? JSON.stringify(tags.split(',').map(tag => tag.trim())) : null,
-          isPublic !== 'false'
+          isPublic === 'true'
         ]
       });
     }
 
     // 执行事务
-    const results = await executeTransaction(queries);
+    await executeTransaction(queries);
     
     // 获取上传的资料信息
-    const materialIds = results.filter(result => result.insertId).map(result => result.insertId);
+    const limit = parseInt(files.length, 10); 
+
+    const lastInsertIds = await executeQuery(
+        `SELECT id FROM materials WHERE course_id = ? ORDER BY id DESC LIMIT ${limit}`, // 使用模板字符串拼接 LIMIT
+        [courseId] // 参数数组中只剩下 courseId
+    );
+    const materialIds = lastInsertIds.map(row => row.id).reverse();
     
-    if (materialIds.length > 0) {
-      const materials = await executeQuery(`
+    const uploadedMaterials = await executeQuery(`
         SELECT m.*, c.name as course_name, c.code as course_code
         FROM materials m
         JOIN courses c ON m.course_id = c.id
         WHERE m.id IN (${materialIds.map(() => '?').join(',')})
       `, materialIds);
-      
-      uploadedMaterials.push(...materials);
-    }
 
     res.status(201).json({
       message: `成功上传 ${files.length} 个文件`,
@@ -320,12 +340,18 @@ router.post('/upload', authenticateToken, upload.array('files', 10), async (req,
   } catch (error) {
     console.error('上传资料失败:', error);
     
-    // 清理已上传的文件
+    // 清理已上传的所有临时文件
     if (req.files) {
       req.files.forEach(file => {
         fs.unlink(file.path).catch(console.error);
       });
     }
+    
+    // --- 新增：返回更具体的 409 Conflict 错误 ---
+    if (error.message.includes('已存在')) {
+      return res.status(409).json({ error: '文件冲突', message: error.message });
+    }
+    // --- 错误处理结束 ---
     
     res.status(500).json({ error: '上传资料失败' });
   }

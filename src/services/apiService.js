@@ -109,6 +109,7 @@ export const materialsAPI = {
     body: formData,
     headers: {} 
   }),
+  delete: (id) => apiFetch(`/materials/${id}`, { method: 'DELETE' }),
 };
 
 // 试卷 API
@@ -121,6 +122,7 @@ export const papersAPI = {
     method: 'POST',
     body: JSON.stringify(config),
   }),
+  delete: (id) => apiFetch(`/papers/${id}`, { method: 'DELETE' }),
 };
 
 // 评论 API (示例, 后端需要实现)
