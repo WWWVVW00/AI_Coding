@@ -141,28 +141,35 @@ text_splitter = RecursiveCharacterTextSplitter(
     chunk_overlap=200
 )
 
-# Prompt template
+# Prompt template (替换为这个新版本)
 prompt_template = PromptTemplate(
     input_variables=["materials", "num_questions"],
-    template="""Based on the following educational materials, generate {num_questions} high-quality exam questions with detailed answers.
+    template="""Based on the following educational materials, generate {num_questions} high-quality exam questions.
 
 Materials:
 {materials}
 
-For each question, provide:
-1. The question text
-2. A detailed answer
-3. Difficulty level (easy/medium/hard)
-4. Main topic
+For each question, you MUST generate five distinct fields:
+1. "question": The question text itself.
+2. "answer": A concise and direct answer to the question.
+3. "explanation": A DETAILED explanation. **This is critical.** The explanation MUST:
+    - Be significantly more detailed and longer than the answer.
+    - NEVER be a simple copy of the answer.
+    - Explain the 'why' or 'how' behind the correct answer.
+    - If possible, define key terms from the question or reference concepts from the provided materials.
+4. "difficulty": The difficulty level (must be one of: "easy", "medium", "hard").
+5. "topic": A brief topic or keyword for the question.
 
-Format your response as JSON:
+Format your response as a valid JSON object with a single key "questions" which is a list of objects.
+Here is an example of the desired format and quality:
 {{
   "questions": [
     {{
-      "question": "question text",
-      "answer": "detailed answer",
+      "question": "In web analytics, what is the difference between a micro and a macro conversion?",
+      "answer": "A macro conversion is the primary business goal (e.g., a sale), while a micro conversion is a smaller, supporting user action (e.g., adding to cart).",
+      "explanation": "A macro conversion represents the ultimate objective of a website, such as a completed purchase on an e-commerce site. It directly contributes to the main business purpose. A micro conversion, on the other hand, is an intermediate step that indicates user engagement and progress towards the macro goal. Examples include signing up for a newsletter, watching a product video, or adding an item to the shopping cart. Tracking micro conversions is crucial for understanding the user journey and identifying potential drop-off points before the final goal is reached.",
       "difficulty": "medium",
-      "topic": "main topic"
+      "topic": "Web Analytics Conversions"
     }}
   ]
 }}

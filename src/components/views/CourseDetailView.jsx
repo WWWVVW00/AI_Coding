@@ -1,8 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  ArrowLeft, BookOpen, Calendar, User, Hash, GraduationCap, Upload, 
-  FileText, Brain, MessageCircle, Star, Download, Lock, Trash2 
-} from 'lucide-react';
+import { ArrowLeft, BookOpen, Calendar, User, Hash, GraduationCap, Upload, FileText, Brain, MessageCircle, Star, Download, Lock, Trash2, KeyRound } from 'lucide-react';
 import { useTranslation } from '../../contexts/TranslationContext.jsx';
 import { materialsAPI, papersAPI, commentsAPI } from '../../services/apiService.js';
 
@@ -304,12 +301,41 @@ function CourseDetailView({ user, course, setCurrentView }) {
                             <div className="flex items-center mt-2"><Star className="h-4 w-4 text-yellow-400 mr-1" /><span className="text-sm text-gray-600">{paper.average_rating || 0}/5</span></div>
                           </div>
                         </div>
-                        <div className="flex items-center ml-2">
-                          <a href={`${import.meta.env.VITE_API_URL}/papers/${paper.id}/download`} target="_blank" rel="noopener noreferrer" className="px-3 py-1 text-sm bg-cityu-gradient text-white rounded hover:shadow-lg transition-all">{t('courseDetail.papers.viewButton')}</a>
-                          {user && user.id === paper.created_by && (
-                            <button onClick={() => handleDeletePaper(paper.id)} className="p-1 text-red-400 hover:text-red-600 ml-1" title="删除试卷"><Trash2 className="h-4 w-4" /></button>
-                          )}
-                        </div>
+                        <div className="flex items-center space-x-2 ml-2">
+                          {/* 下载题目按钮 */}
+                          <a
+                            href={`${import.meta.env.VITE_API_URL}/papers/${paper.id}/download`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="仅下载题目"
+                            className="flex items-center px-3 py-1 text-sm bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors"
+                          >
+                            <FileText className="h-4 w-4 mr-1.5" />
+                            题目
+                          </a>
+
+                          {/* 下载答案按钮 */}
+                          <a
+                            href={`${import.meta.env.VITE_API_URL}/papers/${paper.id}/download?includeAnswers=true`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="下载题目、答案和解析"
+                            className="flex items-center px-3 py-1 text-sm bg-cityu-gradient text-white rounded hover:shadow-lg transition-all"
+                          >
+                            <KeyRound className="h-4 w-4 mr-1.5" />
+                            答案
+                          </a>
+                          {/* 删除按钮 */}
+                            {user && user.id === paper.created_by && (
+                              <button
+                                onClick={() => handleDeletePaper(paper.id)}
+                                className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-100 rounded"
+                                title="删除试卷"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
                       </div>
                     </div>
                   ))}

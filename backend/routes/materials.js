@@ -358,55 +358,50 @@ router.post('/upload', authenticateToken, upload.array('files', 10), async (req,
 });
 
 // 下载资料
-router.get('/:id/download', async (req, res) => {
+// 下载资料 (用这个新版本替换整个函数)
+router.get('/:id/download', optionalAuth, async (req, res) => { // 1. 添加 optionalAuth 中间件
   try {
     const { id } = req.params;
-    const userId = req.user?.id;
+    const userId = req.user?.id; // 2. 获取当前用户ID
 
+    // 3. 修改 SQL 查询逻辑
     const materials = await executeQuery(`
       SELECT m.*, c.name as course_name
       FROM materials m
       JOIN courses c ON m.course_id = c.id
-      WHERE m.id = ? AND m.is_public = TRUE
-    `, [id]);
+      WHERE m.id = ? AND (m.is_public = TRUE OR m.uploaded_by = ?)
+    `, [id, userId || 0]); // 4. 传入用户ID
 
     if (materials.length === 0) {
-      return res.status(404).json({ error: '资料不存在或不可下载' });
+      // 5. 更新错误信息
+      return res.status(404).json({ error: '资料不存在或您没有权限下载' });
     }
 
     const material = materials[0];
     const filePath = material.file_path;
 
-    // 检查文件是否存在
     if (!await fs.pathExists(filePath)) {
       return res.status(404).json({ error: '文件不存在' });
     }
 
-    // 记录下载日志
+    // 记录下载日志 (逻辑不变)
     if (userId) {
       await executeQuery(`
         INSERT INTO download_logs (user_id, item_type, item_id, ip_address, user_agent)
         VALUES (?, 'material', ?, ?, ?)
-      `, [
-        userId,
-        id,
-        req.ip,
-        req.get('User-Agent')
-      ]);
+      `, [userId, id, req.ip, req.get('User-Agent')]);
     }
 
-    // 增加下载计数
+    // 增加下载计数 (逻辑不变)
     await executeQuery(
       'UPDATE materials SET download_count = download_count + 1 WHERE id = ?',
       [id]
     );
 
-    // 设置响应头
+    // 设置响应头并发送文件 (逻辑不变)
     res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(material.file_name)}"`);
     res.setHeader('Content-Type', material.mime_type);
     res.setHeader('Content-Length', material.file_size);
-
-    // 发送文件
     const fileStream = fs.createReadStream(filePath);
     fileStream.pipe(res);
 
