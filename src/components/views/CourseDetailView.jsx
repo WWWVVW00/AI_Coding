@@ -9,9 +9,7 @@ function CourseDetailView({ course, setCurrentView }) {
   const [materials, setMaterials] = useState([]);
   const [selectedMaterials, setSelectedMaterials] = useState([]); // 用户选择的材料ID
   const [sharedPapers, setSharedPapers] = useState([]);
-  const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [newComment, setNewComment] = useState('');
   const [displayCourse, setDisplayCourse] = useState(course);
 
   // 翻译动态课程内容
@@ -42,15 +40,13 @@ function CourseDetailView({ course, setCurrentView }) {
     if (!course) return;
     setLoading(true);
     try {
-      const [materialsRes, papersRes, commentsRes] = await Promise.all([
+      const [materialsRes, papersRes] = await Promise.all([
         materialsAPI.getByCourse(course.id),
-        papersAPI.getByCourse(course.id),
-        // commentsAPI.getByCourse(course.id) // 假设后端实现了评论API
+        papersAPI.getByCourse(course.id)
       ]);
 
       setMaterials(materialsRes.materials || []);
       setSharedPapers(papersRes.papers || []);
-      // setComments(commentsRes.comments || []);
     } catch (error) {
       console.error(t('courseDetail.error.load'), error);
     } finally {
@@ -142,16 +138,7 @@ function CourseDetailView({ course, setCurrentView }) {
     }
   };
   
-  const handleAddComment = async () => {
-    if (!newComment.trim()) return;
-    try {
-      await commentsAPI.create({ courseId: course.id, content: newComment });
-      setNewComment('');
-      await loadCourseData();
-    } catch (error) {
-      console.error(t('courseDetail.error.addComment'), error);
-    }
-  };
+  // 评论相关逻辑已移除
 
   if (!displayCourse) {
     // ... (no change in return logic)
@@ -256,16 +243,7 @@ function CourseDetailView({ course, setCurrentView }) {
             >
               {t('courseDetail.tabs.papers')} ({sharedPapers.length})
             </button>
-            <button
-              onClick={() => setActiveTab('comments')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'comments'
-                  ? 'border-cityu-orange text-cityu-orange'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              {t('courseDetail.tabs.comments')} ({comments.length})
-            </button>
+            {/* 评论 Tab 已移除 */}
           </nav>
         </div>
 
@@ -447,6 +425,7 @@ function CourseDetailView({ course, setCurrentView }) {
             </div>
           )}
           {/* ... 其他 Tab 内容 ... */}
+          {/* 评论区已移除 */}
         </div>
       </div>
     </div>

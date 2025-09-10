@@ -123,11 +123,4 @@ export const papersAPI = {
   }),
 };
 
-// 评论 API (示例, 后端需要实现)
-export const commentsAPI = {
-    getByCourse: (courseId) => apiFetch(`/comments/course/${courseId}`),
-    create: (commentData) => apiFetch('/comments', {
-        method: 'POST',
-        body: JSON.stringify(commentData)
-    })
-}
+// 评论 API 已移除
