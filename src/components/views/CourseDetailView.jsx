@@ -6,6 +6,9 @@ import { materialsAPI, papersAPI, commentsAPI } from '../../services/apiService.
 function CourseDetailView({ user, course, setCurrentView }) {
   const { t, translateDynamic, currentLanguage, supportedLanguages } = useTranslation();
   const [downloadLang, setDownloadLang] = useState(currentLanguage); // 新增狀態來管理下載語言選項
+  const [paperTitle, setPaperTitle] = useState(`${course.name} - 练习题`); // 默认标题
+  const [paperQuestionsCount, setPaperQuestionsCount] = useState(10); // 默认10道题
+  const [paperDifficulty, setPaperDifficulty] = useState('medium'); // 默认中等难度
   
   // Tabs and Data
   const [activeTab, setActiveTab] = useState('overview');
@@ -23,6 +26,11 @@ function CourseDetailView({ user, course, setCurrentView }) {
   const [isPublicUpload, setIsPublicUpload] = useState(true);
   const [isPublicPaper, setIsPublicPaper] = useState(false); // Default to private
   const [newComment, setNewComment] = useState('');
+
+  useEffect(() => {
+    setPaperTitle(`${course.name} - 练习题`);
+  }, [course]);
+
 
   useEffect(() => {
     // 如果没有试卷数据，则无需操作
@@ -156,21 +164,30 @@ function CourseDetailView({ user, course, setCurrentView }) {
       alert('请至少选择一个学习资料用于生成试卷');
       return;
     }
+    if (!paperTitle.trim()) {
+      alert('请输入试卷标题');
+      return;
+    }
 
     setLoading(true);
     try {
+      // ***** 核心修改：使用新的 state *****
       await papersAPI.generate({
         courseId: course.id,
-        title: `${course.name} - 智能生成试卷`,
+        title: paperTitle, // 使用用户输入的标题
         description: `基于 ${selectedMaterials.length} 个学习资料生成的试卷`,
-        difficultyLevel: 'medium',
-        totalQuestions: 10,
+        difficultyLevel: paperDifficulty, // 使用用户选择的难度
+        totalQuestions: paperQuestionsCount, // 使用用户选择的数量
         isPublic: isPublicPaper,
         sourceMaterials: selectedMaterials
       });
       await loadCourseData();
+      
+      // 重置状态
       setSelectedMaterials([]);
       setIsPublicPaper(false);
+      setPaperTitle(`${course.name} - 练习题`); // 恢复默认标题
+      
     } catch (error) {
       console.error(t('courseDetail.error.generateError'), error);
       alert(`${t('courseDetail.error.generateError')}: ${error.message}`);
@@ -269,30 +286,105 @@ function CourseDetailView({ user, course, setCurrentView }) {
         <div className="p-6">
           {/* Overview Tab */}
           {activeTab === 'overview' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-orange-50 p-6 rounded-lg">
-                <div className="flex items-center mb-4"><Upload className="h-8 w-8 text-cityu-orange mr-3" /><div><h3 className="text-lg font-semibold text-gray-900">{t('courseDetail.overview.uploadTitle')}</h3><p className="text-gray-600">{t('courseDetail.overview.uploadDescription')}</p></div></div>
-                <input type="file" multiple accept=".txt,.pdf,text/plain,application/pdf" onChange={handleFileUpload} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-cityu-orange hover:file:bg-orange-100" disabled={loading} />
-                <div className="mt-3 flex items-center">
-                  <input id="is-public-checkbox" type="checkbox" checked={isPublicUpload} onChange={(e) => setIsPublicUpload(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-cityu-orange focus:ring-cityu-orange" />
-                  <label htmlFor="is-public-checkbox" className="ml-2 block text-sm text-gray-900">公开此资料<span className="text-gray-500 text-xs ml-1">(其他用户将可以看到并使用)</span></label>
+            <div className="bg-red-50 p-6 rounded-lg space-y-4">
+              <div className="flex items-center">
+                <Brain className="h-8 w-8 text-cityu-red mr-3" />
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">{t('courseDetail.overview.generateTitle')}</h3>
+                  <p className="text-gray-600 text-sm">{t('courseDetail.overview.generateDescription')}</p>
                 </div>
               </div>
-              
-              <div className="bg-red-50 p-6 rounded-lg">
-                <div className="flex items-center mb-4"><Brain className="h-8 w-8 text-cityu-red mr-3" /><div><h3 className="text-lg font-semibold text-gray-900">{t('courseDetail.overview.generateTitle')}</h3><p className="text-gray-600">{t('courseDetail.overview.generateDescription')}</p></div></div>
-                {materials.length > 0 && (
-                  <div className="mb-4">
-                    <div className="flex items-center justify-between mb-2"><h4 className="text-sm font-medium text-gray-700">选择用于生成试卷的材料:</h4><div className="flex space-x-2"><button onClick={() => handleSelectAllMaterials(true)} className="text-xs text-cityu-red hover:underline">全选</button><button onClick={() => handleSelectAllMaterials(false)} className="text-xs text-gray-500 hover:underline">取消全选</button></div></div>
-                    <div className="max-h-32 overflow-y-auto border border-gray-200 rounded-md p-2 bg-white">{materials.map((material) => (<label key={material.id} className="flex items-center space-x-2 p-1 hover:bg-gray-50 rounded"><input type="checkbox" checked={selectedMaterials.includes(material.id)} onChange={(e) => handleMaterialSelection(material.id, e.target.checked)} className="rounded border-gray-300 text-cityu-red focus:ring-cityu-red" /><span className="text-sm text-gray-700 flex-1">{material.title || material.file_name}<span className="text-xs text-gray-500 ml-1">(.{material.file_type})</span></span></label>))}</div>
-                    <p className="text-xs text-gray-500 mt-1">已选择 {selectedMaterials.length} / {materials.length} 个材料</p>
+
+              {/* 材料选择 */}
+              {materials.length > 0 ? (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-medium text-gray-700">1. 选择材料:</h4>
+                    <div className="flex space-x-2">
+                      <button onClick={() => handleSelectAllMaterials(true)} className="text-xs text-cityu-red hover:underline">全选</button>
+                      <button onClick={() => handleSelectAllMaterials(false)} className="text-xs text-gray-500 hover:underline">取消全选</button>
+                    </div>
                   </div>
-                )}
-                <div className="mt-4 mb-2 flex items-center">
-                  <input id="is-public-paper-checkbox" type="checkbox" checked={isPublicPaper} onChange={(e) => setIsPublicPaper(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-cityu-red focus:ring-cityu-red" />
-                  <label htmlFor="is-public-paper-checkbox" className="ml-2 block text-sm text-gray-900">公开分享此试卷<span className="text-gray-500 text-xs ml-1">(其他用户将可以看到并使用)</span></label>
+                  <div className="max-h-32 overflow-y-auto border border-gray-200 rounded-md p-2 bg-white">
+                    {materials.map((material) => (
+                      <label key={material.id} className="flex items-center space-x-2 p-1 hover:bg-gray-50 rounded">
+                        <input type="checkbox" checked={selectedMaterials.includes(material.id)} onChange={(e) => handleMaterialSelection(material.id, e.target.checked)} className="rounded border-gray-300 text-cityu-red focus:ring-cityu-red" />
+                        <span className="text-sm text-gray-700 flex-1">{material.title || material.file_name}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">已选择 {selectedMaterials.length} / {materials.length} 个材料</p>
                 </div>
-                <button onClick={handleGeneratePaper} disabled={loading || materials.length === 0 || selectedMaterials.length === 0} className="w-full px-4 py-2 bg-cityu-gradient text-white rounded-lg hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all">{loading ? t('courseDetail.overview.generating') : t('courseDetail.overview.generateButton')}</button>
+              ) : (
+                <div className="text-center py-4 bg-white rounded-md border">
+                    <p className="text-sm text-gray-500">请先在左侧上传学习资料</p>
+                </div>
+              )}
+
+              {/* 试卷配置 */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-2">2. 配置试卷:</h4>
+                <div className="space-y-3">
+                    {/* 标题输入 */}
+                    <div>
+                        <label htmlFor="paper-title" className="block text-xs text-gray-600 mb-1">试卷标题</label>
+                        <input
+                            id="paper-title"
+                            type="text"
+                            value={paperTitle}
+                            onChange={(e) => setPaperTitle(e.target.value)}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-cityu-red focus:border-cityu-red"
+                            placeholder="例如：第一章 单元测试"
+                        />
+                    </div>
+                    {/* 数量和难度选择 */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label htmlFor="paper-questions-count" className="block text-xs text-gray-600 mb-1">题目数量</label>
+                            <select
+                                id="paper-questions-count"
+                                value={paperQuestionsCount}
+                                onChange={(e) => setPaperQuestionsCount(Number(e.target.value))}
+                                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-cityu-red focus:border-cityu-red"
+                            >
+                                <option value={5}>5 题</option>
+                                <option value={10}>10 题</option>
+                                <option value={15}>15 题</option>
+                                <option value={20}>20 题</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label htmlFor="paper-difficulty" className="block text-xs text-gray-600 mb-1">难度</label>
+                            <select
+                                id="paper-difficulty"
+                                value={paperDifficulty}
+                                onChange={(e) => setPaperDifficulty(e.target.value)}
+                                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-cityu-red focus:border-cityu-red"
+                            >
+                                <option value="easy">简单</option>
+                                <option value="medium">中等</option>
+                                <option value="hard">困难</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+              </div>
+
+              {/* 公开选项和生成按钮 */}
+              <div>
+                <div className="mb-3 flex items-center">
+                  <input id="is-public-paper-checkbox" type="checkbox" checked={isPublicPaper} onChange={(e) => setIsPublicPaper(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-cityu-red focus:ring-cityu-red" />
+                  <label htmlFor="is-public-paper-checkbox" className="ml-2 block text-sm text-gray-900">公开分享此试卷
+                    <span className="text-gray-500 text-xs ml-1">(其他用户将可查看和下载)</span>
+                  </label>
+                </div>
+                <button 
+                    onClick={handleGeneratePaper} 
+                    disabled={loading || materials.length === 0 || selectedMaterials.length === 0} 
+                    className="w-full px-4 py-2 bg-cityu-gradient text-white rounded-lg hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                    {loading ? t('courseDetail.overview.generating') : t('courseDetail.overview.generateButton')}
+                </button>
               </div>
             </div>
           )}
