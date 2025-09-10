@@ -179,14 +179,46 @@ Generate the questions now:"""
 )
 
 def extract_pdf_text(pdf_file: UploadFile) -> str:
-    """Extract text from PDF file"""
+    """Extract text from PDF file with better encoding handling"""
     try:
         content = pdf_file.file.read()
+        
+        # Try pdfplumber first (better for CJK text)
+        try:
+            import pdfplumber
+            with pdfplumber.open(BytesIO(content)) as pdf:
+                text = ""
+                for page in pdf.pages[:20]:  # Limit to 20 pages
+                    page_text = page.extract_text(x_tolerance=3, y_tolerance=3)
+                    if page_text:
+                        text += page_text + "\n"
+                
+                if text.strip():
+                    return text
+        except Exception as e:
+            logger.warning(f"pdfplumber extraction failed, falling back to PyPDF2: {e}")
+        
+        # Fallback to PyPDF2
         pdf_reader = PyPDF2.PdfReader(BytesIO(content))
         text = ""
         
-        for page in pdf_reader.pages[:20]:  # Limit to 20 pages
-            text += page.extract_text() + "\n"
+        for page in pdf_reader.pages[:20]:
+            try:
+                page_text = page.extract_text()
+                # Basic encoding detection and conversion
+                if page_text:
+                    try:
+                        # Try to detect encoding
+                        import chardet
+                        encoding = chardet.detect(page_text.encode())['encoding'] or 'utf-8'
+                        page_text = page_text.encode(encoding).decode('utf-8')
+                    except Exception:
+                        # If encoding detection fails, try direct UTF-8 decoding
+                        page_text = page_text.encode('utf-8', errors='ignore').decode('utf-8')
+                    text += page_text + "\n"
+            except Exception as e:
+                logger.warning(f"Failed to extract text from page: {e}")
+                continue
         
         if not text.strip():
             raise ValueError("No readable text found in PDF")
