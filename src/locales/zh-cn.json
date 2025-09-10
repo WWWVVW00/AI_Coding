@@ -1,9 +1,8 @@
 {
   "nav": {
-    "title": "智能学习助手",
+    "title": "城大智学坊 (CityU LearnSphere)",
     "home": "首页",
     "courses": "课程",
-    "forum": "论坛",
     "logout": "退出"
   },
   "home": {
