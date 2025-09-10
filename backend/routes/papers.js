@@ -21,19 +21,30 @@ async function getMaterialsData(materialIds) {
     return { textContent: "", pdfFiles: [] };
   }
   
+  console.log('[DEBUG] 查询材料数据，IDs:', materialIds);
+  
+  // 构建正确的IN查询
+  const placeholders = materialIds.map(() => '?').join(',');
+  const query = `SELECT id, file_path, file_type, file_name FROM materials WHERE id IN (${placeholders})`;
+  
+  console.log('[DEBUG] SQL查询语句:', query);
+  console.log('[DEBUG] 查询参数:', materialIds);
+  
   // 查询数据库获取文件路径
-  const materials = await executeQuery(
-    `SELECT id, file_path, file_type, file_name FROM materials WHERE id IN (?)`,
-    [materialIds]
-  );
+  const materials = await executeQuery(query, materialIds);
+  
+  console.log('[DEBUG] 数据库查询结果:', materials.length, '条记录');
+  console.log('[DEBUG] 查询到的材料:', materials);
   
   let combinedText = "";
   let pdfFiles = [];
 
   for (const material of materials) {
+    console.log(`[DEBUG] 处理材料 ${material.id}: 类型=${material.file_type}, 路径=${material.file_path}`);
     try {
       // 检查文件是否存在
       await fs.access(material.file_path);
+      console.log(`[DEBUG] 文件存在: ${material.file_path}`);
       
       if (material.file_type === 'pdf') {
         // PDF文件直接保存路径，后续上传到生成服务
@@ -42,16 +53,22 @@ async function getMaterialsData(materialIds) {
           filePath: material.file_path,
           originalName: material.file_name || `material_${material.id}.pdf`
         });
-      } else if (['txt', 'md'].includes(material.file_type)) {
-        // 文本文件读取内容
+        console.log(`[DEBUG] 添加PDF文件: ${material.file_name}`);
+      } else if (material.file_type === 'txt') {
+        // 纯文本文件读取内容
         const text = await fs.readFile(material.file_path, 'utf8');
         combinedText += `--- START OF MATERIAL ---\n${text}\n--- END OF MATERIAL ---\n\n`;
+        console.log(`[DEBUG] 读取文本文件: ${material.file_name}, 长度: ${text.length}`);
+      } else {
+        console.warn(`[DEBUG] 跳过不支持的文件类型: ${material.file_type}, 文件: ${material.file_name}`);
       }
     } catch (error) {
-      console.error(`无法读取或处理文件 ${material.file_path}:`, error);
+      console.error(`[DEBUG] 无法读取或处理文件 ${material.file_path}:`, error.message);
       // 即使某个文件读取失败，也继续处理其他文件
     }
   }
+  
+  console.log('[DEBUG] 最终结果 - 文本长度:', combinedText.length, ', PDF数量:', pdfFiles.length);
   
   return { textContent: combinedText, pdfFiles };
 }
@@ -92,20 +109,44 @@ function generatePaperContent(paper, questions, includeAnswers) {
 // --- [核心功能] 生成新试卷 ---
 router.post('/generate', authenticateToken, validatePaperGeneration, async (req, res, next) => {
   try {
+    console.log('=== 开始试卷生成流程 ===');
     const { 
       courseId, title, description, difficultyLevel, totalQuestions, 
       isPublic, sourceMaterials 
     } = req.body;
     const userId = req.user.id;
 
+    console.log('[DEBUG] 接收到的请求参数:', {
+      courseId,
+      title,
+      description,
+      difficultyLevel,
+      totalQuestions,
+      isPublic,
+      sourceMaterials,
+      userId
+    });
+
     // 1. 从文件系统中获取学习资料数据（文本内容和PDF文件）
+    console.log('[STEP 1] 开始获取学习资料数据...');
+    console.log('[DEBUG] 待处理的资料ID列表:', sourceMaterials);
+    
     const { textContent, pdfFiles } = await getMaterialsData(sourceMaterials);
+    
+    console.log('[STEP 1] 资料数据获取完成:');
+    console.log('  - 文本内容长度:', textContent ? textContent.length : 0);
+    console.log('  - PDF文件数量:', pdfFiles.length);
+    if (pdfFiles.length > 0) {
+      console.log('  - PDF文件列表:', pdfFiles.map(pdf => ({ id: pdf.id, name: pdf.originalName, path: pdf.filePath })));
+    }
     
     // 检查是否有可用的材料
     if (!textContent && pdfFiles.length === 0 && sourceMaterials && sourceMaterials.length > 0) {
+      console.log('[ERROR] 无法从提供的资料中提取可读的内容');
       return res.status(400).json({ error: '无法从提供的资料中提取可读的内容。' });
     }
 
+    console.log('[STEP 2] 开始选择API端点并准备请求...');
     let taskId;
     let aiServiceUrl;
 
@@ -114,18 +155,28 @@ router.post('/generate', authenticateToken, validatePaperGeneration, async (req,
       // 优先使用PDF上传API（目前只支持单个PDF文件）
       const pdfFile = pdfFiles[0]; // 取第一个PDF文件
       aiServiceUrl = `${process.env.QUESTION_GENERATOR_URL}/tasks/generate/pdf`;
-      console.log(`[AI] 正在调用PDF上传API: ${aiServiceUrl}`);
+      console.log('[STEP 2] 选择PDF上传模式');
+      console.log(`[DEBUG] PDF API URL: ${aiServiceUrl}`);
+      console.log(`[DEBUG] 使用的PDF文件:`, {
+        id: pdfFile.id,
+        name: pdfFile.originalName,
+        path: pdfFile.filePath
+      });
 
       const FormData = require('form-data');
       const form = new FormData();
       
       // 读取PDF文件并添加到表单
+      console.log('[DEBUG] 正在创建文件流...');
       const pdfStream = require('fs').createReadStream(pdfFile.filePath);
       form.append('pdf_file', pdfStream, {
         filename: pdfFile.originalName,
         contentType: 'application/pdf'
       });
       form.append('num_questions', totalQuestions.toString());
+      
+      console.log('[DEBUG] 表单数据准备完成，开始发送请求...');
+      console.log(`[AI] 正在调用PDF上传API: ${aiServiceUrl}`);
 
       const submitResponse = await axios.post(aiServiceUrl, form, {
         headers: {
@@ -136,62 +187,107 @@ router.post('/generate', authenticateToken, validatePaperGeneration, async (req,
       });
 
       taskId = submitResponse.data.task_id;
-      console.log(`[AI] PDF任务已提交，ID: ${taskId}, 文件: ${pdfFile.originalName}`);
+      console.log(`[AI] PDF任务已提交成功！`);
+      console.log(`[DEBUG] 任务ID: ${taskId}`);
+      console.log(`[DEBUG] 文件名: ${pdfFile.originalName}`);
+      console.log(`[DEBUG] 服务器响应:`, submitResponse.data);
       
     } else {
       // 使用文本API
       aiServiceUrl = `${process.env.QUESTION_GENERATOR_URL}/tasks/generate`;
-      console.log(`[AI] 正在调用文本API: ${aiServiceUrl}`);
+      console.log('[STEP 2] 选择文本API模式');
+      console.log(`[DEBUG] 文本API URL: ${aiServiceUrl}`);
       
       const generationInput = textContent || '通用知识';
-      const submitResponse = await axios.post(aiServiceUrl, {
+      console.log(`[DEBUG] 输入文本长度: ${generationInput.length}`);
+      console.log(`[DEBUG] 文本内容预览: ${generationInput.substring(0, 200)}...`);
+      
+      const requestPayload = {
         materials: generationInput.substring(0, 20000), // 限制上下文长度
         num_questions: totalQuestions
+      };
+      
+      console.log('[DEBUG] 请求载荷:', {
+        materials_length: requestPayload.materials.length,
+        num_questions: requestPayload.num_questions
       });
+      console.log(`[AI] 正在调用文本API: ${aiServiceUrl}`);
+      
+      const submitResponse = await axios.post(aiServiceUrl, requestPayload);
 
       taskId = submitResponse.data.task_id;
-      console.log(`[AI] 文本任务已提交，ID: ${taskId}`);
+      console.log(`[AI] 文本任务已提交成功！`);
+      console.log(`[DEBUG] 任务ID: ${taskId}`);
+      console.log(`[DEBUG] 服务器响应:`, submitResponse.data);
     }
 
     if (!taskId) {
+      console.log('[ERROR] AI服务未能返回有效的任务ID');
       throw new Error('AI服务未能返回有效的任务ID');
     }
 
+    console.log('[STEP 3] 开始轮询AI服务获取任务状态...');
+    console.log(`[DEBUG] 任务ID: ${taskId}`);
+    console.log(`[DEBUG] 最大轮询次数: 100 (约8.5分钟)`);
+    
     // 3. 轮询AI服务获取任务状态
     let taskStatus;
-    const maxAttempts = 30; // 最多轮询30次（约2.5分钟）
+    const maxAttempts = 100; // 最多轮询30次（约8.5分钟）
     
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      console.log(`[POLLING] 第 ${attempt + 1}/${maxAttempts} 次查询，等待5秒...`);
       await new Promise(resolve => setTimeout(resolve, 5000)); // 等待5秒
       
-      const statusResponse = await axios.get(`${process.env.QUESTION_GENERATOR_URL}/tasks/${taskId}/status`);
+      const statusUrl = `${process.env.QUESTION_GENERATOR_URL}/tasks/${taskId}/status`;
+      console.log(`[DEBUG] 查询状态URL: ${statusUrl}`);
+      
+      const statusResponse = await axios.get(statusUrl);
       taskStatus = statusResponse.data;
 
+      console.log(`[POLLING] 任务状态响应:`, taskStatus);
+
       if (taskStatus.status === 'completed') {
-        console.log(`[AI] 任务 ${taskId} 完成`);
+        console.log(`[SUCCESS] 任务 ${taskId} 已完成！`);
+        console.log(`[DEBUG] 完成时间: 第 ${attempt + 1} 次查询`);
         break;
       }
       if (taskStatus.status === 'failed') {
+        console.log(`[ERROR] 任务失败:`, taskStatus.error_message);
         throw new Error(`AI任务生成失败: ${taskStatus.error_message}`);
       }
-      console.log(`[AI] 任务 ${taskId} 状态: ${taskStatus.status}, 进度: ${taskStatus.progress || '处理中'}, 第 ${attempt + 1} 次查询`);
+      console.log(`[POLLING] 任务 ${taskId} 状态: ${taskStatus.status}, 进度: ${taskStatus.progress || '处理中'}`);
     }
 
     if (!taskStatus || taskStatus.status !== 'completed') {
+      console.log('[ERROR] 任务超时或状态异常');
+      console.log('[DEBUG] 最终状态:', taskStatus);
       throw new Error('AI任务超时，请稍后重试或减少题目数量。');
     }
 
+    console.log('[STEP 4] 开始获取任务结果...');
     // 4. 获取任务结果
-    const resultResponse = await axios.get(`${process.env.QUESTION_GENERATOR_URL}/tasks/${taskId}/result`);
+    const resultUrl = `${process.env.QUESTION_GENERATOR_URL}/tasks/${taskId}/result`;
+    console.log(`[DEBUG] 结果获取URL: ${resultUrl}`);
+    
+    const resultResponse = await axios.get(resultUrl);
     const taskResult = resultResponse.data.result;
 
+    console.log('[DEBUG] 任务结果响应:', resultResponse.data);
+    console.log('[DEBUG] 解析后的结果:', taskResult);
+
     if (!taskResult) {
+      console.log('[ERROR] 无法获取AI任务结果');
       throw new Error('无法获取AI任务结果');
     }
 
     const { questions } = taskResult;
+    console.log(`[SUCCESS] 获取到 ${questions.length} 道题目`);
+    console.log('[DEBUG] 题目预览:', questions.slice(0, 2));
+
+    console.log('[STEP 5] 开始将结果存入数据库...');
     
-    // 4. 将AI返回的结果存入数据库
+    // 5. 将AI返回的结果存入数据库
+    console.log('[DEBUG] 插入试卷基本信息...');
     const paperResult = await executeQuery(`
       INSERT INTO generated_papers (
         course_id, created_by, title, description, difficulty_level,
@@ -203,27 +299,54 @@ router.post('/generate', authenticateToken, validatePaperGeneration, async (req,
     ]);
 
     const paperId = paperResult.insertId;
+    console.log(`[DEBUG] 试卷插入成功，ID: ${paperId}`);
 
-    const questionQueries = questions.map((q, index) => ({
-      sql: `
-        INSERT INTO paper_questions (
-          paper_id, question_number, question_type, question_text,
-          correct_answer, explanation, difficulty, topic
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `,
-      params: [
-        paperId, index + 1, 'text', q.question,
-        q.answer, q.answer, q.difficulty, q.topic
-      ]
-    }));
+    console.log('[DEBUG] 准备插入题目数据...');
+    const questionQueries = questions.map((q, index) => {
+      console.log(`[DEBUG] 题目 ${index + 1}:`, {
+        question: q.question.substring(0, 100) + '...',
+        answer: q.answer,
+        difficulty: q.difficulty,
+        topic: q.topic
+      });
+      
+      return {
+        sql: `
+          INSERT INTO paper_questions (
+            paper_id, question_number, question_type, question_text,
+            correct_answer, explanation, difficulty
+          ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        `,
+        params: [
+          paperId, index + 1, 'essay', q.question,
+          q.answer, q.answer, q.difficulty
+        ]
+      };
+    });
 
+    console.log(`[DEBUG] 开始批量插入 ${questionQueries.length} 道题目...`);
     await executeTransaction(questionQueries);
+    console.log('[SUCCESS] 题目插入完成');
 
+    console.log('[DEBUG] 查询新创建的试卷信息...');
     const newPaper = await executeQuery('SELECT * FROM generated_papers WHERE id = ?', [paperId]);
+    console.log('[DEBUG] 新试卷信息:', newPaper[0]);
 
+    console.log('=== 试卷生成流程完成 ===');
     res.status(201).json({ message: '试卷智能生成成功！', paper: newPaper[0] });
 
   } catch (error) {
+    console.log('[ERROR] 试卷生成过程中发生错误:');
+    console.log('[ERROR] 错误类型:', error.name);
+    console.log('[ERROR] 错误消息:', error.message);
+    console.log('[ERROR] 错误堆栈:', error.stack);
+    if (error.response) {
+      console.log('[ERROR] HTTP响应错误:', {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: error.response.data
+      });
+    }
     next(error); // 将错误传递给全局错误处理器
   }
 });

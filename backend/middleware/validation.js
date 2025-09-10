@@ -173,21 +173,43 @@ const validateMaterialUpload = (req, res, next) => {
 // 試卷生成驗證
 const validatePaperGeneration = (req, res, next) => {
   const { 
-    materialIds, 
-    questionCount, 
-    difficulty, 
-    questionTypes, 
+    courseId,
     title, 
-    timeLimit 
+    description,
+    difficultyLevel,
+    totalQuestions, 
+    isPublic,
+    sourceMaterials,
+    materialIds  // 兼容前端发送的字段名
   } = req.body;
   const errors = [];
 
   // 必填字段驗證
-  if (!materialIds || !Array.isArray(materialIds) || materialIds.length === 0) {
+  if (!courseId) {
+    errors.push('課程ID是必填項');
+  } else if (isNaN(courseId) || courseId <= 0) {
+    errors.push('課程ID必須是正整數');
+  }
+
+  if (!title) {
+    errors.push('試卷標題是必填項');
+  } else if (title.length < 2 || title.length > 300) {
+    errors.push('試卷標題長度必須在2-300個字符之間');
+  }
+
+  if (!totalQuestions) {
+    errors.push('題目數量是必填項');
+  } else if (isNaN(totalQuestions) || totalQuestions < 1 || totalQuestions > 100) {
+    errors.push('題目數量必須在1-100之間');
+  }
+
+  // sourceMaterials 或 materialIds 至少有一個（兼容性處理）
+  const materials = sourceMaterials || materialIds;
+  if (!materials || !Array.isArray(materials) || materials.length === 0) {
     errors.push('至少需要選擇一個學習材料');
   } else {
     // 驗證每個材料ID都是有效的數字
-    for (const id of materialIds) {
+    for (const id of materials) {
       if (isNaN(id) || id <= 0) {
         errors.push('材料ID格式不正確');
         break;
@@ -195,38 +217,17 @@ const validatePaperGeneration = (req, res, next) => {
     }
   }
 
-  if (!questionCount) {
-    errors.push('題目數量是必填項');
-  } else if (isNaN(questionCount) || questionCount < 1 || questionCount > 100) {
-    errors.push('題目數量必須在1-100之間');
+  // 可選字段驗證
+  if (description && description.length > 2000) {
+    errors.push('試卷描述不能超過2000個字符');
   }
 
-  if (!difficulty) {
-    errors.push('難度級別是必填項');
-  } else if (!['easy', 'medium', 'hard', 'mixed'].includes(difficulty)) {
-    errors.push('難度級別必須是 easy、medium、hard 或 mixed');
+  if (difficultyLevel && !['easy', 'medium', 'hard'].includes(difficultyLevel)) {
+    errors.push('難度級別必須是 easy、medium 或 hard');
   }
 
-  if (!questionTypes || !Array.isArray(questionTypes) || questionTypes.length === 0) {
-    errors.push('至少需要選擇一種題目類型');
-  } else {
-    const validTypes = ['multiple_choice', 'true_false', 'short_answer', 'essay'];
-    for (const type of questionTypes) {
-      if (!validTypes.includes(type)) {
-        errors.push('題目類型不正確');
-        break;
-      }
-    }
-  }
-
-  if (!title) {
-    errors.push('試卷標題是必填項');
-  } else if (title.length < 2 || title.length > 200) {
-    errors.push('試卷標題長度必須在2-200個字符之間');
-  }
-
-  if (timeLimit && (isNaN(timeLimit) || timeLimit < 10 || timeLimit > 300)) {
-    errors.push('考試時間限制必須在10-300分鐘之間');
+  if (isPublic !== undefined && typeof isPublic !== 'boolean') {
+    errors.push('公開狀態必須是布爾值');
   }
 
   // 如果有錯誤，返回錯誤信息

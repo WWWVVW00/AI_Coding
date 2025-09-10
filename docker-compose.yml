@@ -85,6 +85,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
+    networks:
+      - study-assistant-network
     environment:
       # Required: AI API Configuration
       - OPENAI_API_KEY=${OPENAI_API_KEY}

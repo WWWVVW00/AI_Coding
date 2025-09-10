@@ -24,23 +24,21 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-  // 允许的文件类型
+  // 允许的文件类型 - 只支持纯文本和PDF
   const allowedTypes = [
     'application/pdf',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/vnd.ms-powerpoint',
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    'text/plain',
-    'image/jpeg',
-    'image/png',
-    'image/gif'
+    'text/plain'
   ];
 
-  if (allowedTypes.includes(file.mimetype)) {
+  // 检查文件扩展名作为备用验证
+  const fileExt = file.originalname.toLowerCase().split('.').pop();
+  const allowedExtensions = ['pdf', 'txt'];
+
+  if (allowedTypes.includes(file.mimetype) || allowedExtensions.includes(fileExt)) {
     cb(null, true);
   } else {
-    cb(new Error('不支持的文件类型'), false);
+    console.error(`不支持的文件类型: ${file.mimetype}, 文件名: ${file.originalname}, 扩展名: ${fileExt}`);
+    cb(new Error(`不支持的文件类型: ${file.mimetype || fileExt}。仅支持纯文本文件(.txt)和PDF文件(.pdf)`), false);
   }
 };
 
