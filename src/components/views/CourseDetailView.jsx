@@ -4,7 +4,7 @@ import { useTranslation } from '../../contexts/TranslationContext.jsx';
 import { materialsAPI, papersAPI, commentsAPI } from '../../services/apiService.js';
 
 function CourseDetailView({ user, course, setCurrentView }) {
-  const { t, currentLanguage, supportedLanguages, translateDynamic } = useTranslation(); // 獲取當前語言和語言列表
+  const { t, translateDynamic, currentLanguage, supportedLanguages } = useTranslation();
   const [downloadLang, setDownloadLang] = useState(currentLanguage); // 新增狀態來管理下載語言選項
   
   // Tabs and Data
@@ -12,6 +12,7 @@ function CourseDetailView({ user, course, setCurrentView }) {
   const [materials, setMaterials] = useState([]);
   const [sharedPapers, setSharedPapers] = useState([]);
   const [comments, setComments] = useState([]);
+  const [displayPapers, setDisplayPapers] = useState([]);
   
   // UI State
   const [loading, setLoading] = useState(false);
@@ -22,6 +23,49 @@ function CourseDetailView({ user, course, setCurrentView }) {
   const [isPublicUpload, setIsPublicUpload] = useState(true);
   const [isPublicPaper, setIsPublicPaper] = useState(false); // Default to private
   const [newComment, setNewComment] = useState('');
+
+  useEffect(() => {
+    // 如果没有试卷数据，则无需操作
+    if (!sharedPapers || sharedPapers.length === 0) {
+      setDisplayPapers([]); // 确保显示列表也为空
+      return;
+    }
+
+    // 如果当前语言是中文 (原始语言)，直接显示原始数据，无需翻译
+    if (currentLanguage === 'zh-cn' || currentLanguage === 'zh-tw') {
+      setDisplayPapers(sharedPapers);
+      return;
+    }
+
+    // 执行异步翻译
+    const translatePapers = async () => {
+      // 创建一个并发翻译所有试卷的 Promises 数组
+      const translationPromises = sharedPapers.map(paper => 
+        // translateDynamic 内部我们已经优化为可以处理对象
+        translateDynamic({ title: paper.title, description: paper.description })
+      );
+      
+      try {
+        // 等待所有翻译完成
+        const translatedContents = await Promise.all(translationPromises);
+        
+        // 将翻译结果与原始试卷数据合并，生成新的显示列表
+        const newDisplayPapers = sharedPapers.map((paper, index) => ({
+          ...paper, // 保留原始数据的所有其他字段
+          title: translatedContents[index].title, // 使用翻译后的标题
+          description: translatedContents[index].description, // 使用翻译后的描述
+        }));
+
+        setDisplayPapers(newDisplayPapers);
+      } catch (error) {
+        console.error("Failed to translate shared papers:", error);
+        setDisplayPapers(sharedPapers); // 如果翻译失败，回退到显示原始数据
+      }
+    };
+
+    translatePapers();
+
+  }, [sharedPapers, currentLanguage, translateDynamic]); // 依赖项：原始数据和当前语言
 
   // Translate dynamic course content
   useEffect(() => {
@@ -171,15 +215,13 @@ function CourseDetailView({ user, course, setCurrentView }) {
 
   const handleDownloadPaper = async (paperId, includeAnswers) => {
     try {
-        // 如果下載語言是英文 (原始語言)，調用舊的下載接口
-        if (downloadLang === 'en') {
-            await papersAPI.download(paperId, includeAnswers);
-        } else {
-            // 否則，調用新的翻譯下載接口
-            await papersAPI.translateAndDownload(paperId, downloadLang, includeAnswers);
-        }
+      if (downloadLang === 'en') {
+        await papersAPI.download(paperId, includeAnswers);
+      } else {
+        await papersAPI.translateAndDownload(paperId, downloadLang, includeAnswers);
+      }
     } catch (error) {
-        console.error('下載失敗:', error);
+      console.error('下载失败:', error);
     }
   };
 
@@ -292,25 +334,43 @@ function CourseDetailView({ user, course, setCurrentView }) {
           {/* Papers Tab */}
           {activeTab === 'papers' && (
             <div className="space-y-4">
-              {sharedPapers.length > 0 ? (
+              {/* ***** 核心修改：将 sharedPapers.length 改为 displayPapers.length ***** */}
+              {displayPapers.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {sharedPapers.map((paper) => (
+                  {/* ***** 核心修改：将 sharedPapers.map 改为 displayPapers.map ***** */}
+                  {displayPapers.map((paper) => (
                     <div key={paper.id} className="bg-gray-50 p-4 rounded-lg">
                       <div className="flex items-start justify-between">
                         <div className="flex items-start flex-1">
                           <Brain className="h-5 w-5 text-cityu-red mr-3 mt-1" />
                           <div className="flex-1">
                             <div className="flex items-center">
+                              {/* 现在这里会显示翻译后的标题 */}
                               <h4 className="font-medium text-gray-900">{paper.title}</h4>
-                              {!paper.is_public && (<span className="ml-2 flex items-center px-2 py-0.5 bg-gray-200 text-gray-700 text-xs rounded-full"><Lock className="h-3 w-3 mr-1" />私有</span>)}
+                              {!paper.is_public && (
+                                <span className="ml-2 flex items-center px-2 py-0.5 bg-gray-200 text-gray-700 text-xs rounded-full">
+                                  <Lock className="h-3 w-3 mr-1" />私有
+                                </span>
+                              )}
                             </div>
+                            {/* 现在这里会显示翻译后的描述 */}
                             <p className="text-sm text-gray-600 mt-1">{paper.description}</p>
-                            <div className="flex items-center text-xs text-gray-500 mt-2 space-x-4"><span>{t('courseDetail.papers.creator')}: {paper.creator_name}</span><span>题目数: {paper.total_questions}</span></div>
-                            <div className="flex items-center mt-2"><Star className="h-4 w-4 text-yellow-400 mr-1" /><span className="text-sm text-gray-600">{paper.average_rating || 0}/5</span></div>
+                            
+                            {/* 其他部分不需要修改 */}
+                            <div className="flex items-center text-xs text-gray-500 mt-2 space-x-4">
+                              <span>{t('courseDetail.papers.creator')}: {paper.creator_name}</span>
+                              <span>题目数: {paper.total_questions}</span>
+                            </div>
+                            <div className="flex items-center mt-2">
+                              <Star className="h-4 w-4 text-yellow-400 mr-1" />
+                              <span className="text-sm text-gray-600">{paper.average_rating || 0}/5</span>
+                            </div>
                           </div>
                         </div>
+                        
+                        {/* 下载按钮区域保持不变 */}
                         <div className="flex items-center space-x-2 ml-2">
-                          {/* 語言選擇下拉菜單 */}
+                          {/* 语言选择下拉菜單 */}
                           <div className="relative">
                               <select
                                   value={downloadLang}
@@ -324,29 +384,48 @@ function CourseDetailView({ user, course, setCurrentView }) {
                               <Languages className="h-4 w-4 text-gray-400 absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none" />
                           </div>
 
-                          {/* 下載按鈕 */}
-                          <button onClick={() => handleDownloadPaper(paper.id, false)} title={`下載 ${supportedLanguages.find(l=>l.code===downloadLang).nativeName} 題目`} className="flex items-center px-3 py-1 text-sm bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors">
+                          {/* 下载题目按钮 */}
+                          <button 
+                              onClick={() => handleDownloadPaper(paper.id, false)} 
+                              title={`下载 ${supportedLanguages.find(l => l.code === downloadLang)?.nativeName || ''} 题目`} 
+                              className="flex items-center px-3 py-1 text-sm bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors"
+                          >
                               <FileText className="h-4 w-4 mr-1.5" />
-                              題目
+                              题目
                           </button>
-                          <button onClick={() => handleDownloadPaper(paper.id, true)} title={`下載 ${supportedLanguages.find(l=>l.code===downloadLang).nativeName} 題目與答案`} className="flex items-center px-3 py-1 text-sm bg-cityu-gradient text-white rounded hover:shadow-lg transition-all">
+                          
+                          {/* 下载答案按钮 */}
+                          <button 
+                              onClick={() => handleDownloadPaper(paper.id, true)} 
+                              title={`下载 ${supportedLanguages.find(l => l.code === downloadLang)?.nativeName || ''} 题目与答案`} 
+                              className="flex items-center px-3 py-1 text-sm bg-cityu-gradient text-white rounded hover:shadow-lg transition-all"
+                          >
                               <KeyRound className="h-4 w-4 mr-1.5" />
                               答案
                           </button>
                           
-                          {/* 刪除按鈕 (不變) */}
+                          {/* 删除按钮 (仅限创建者) */}
                           {user && user.id === paper.created_by && (
-                              <button onClick={() => handleDeletePaper(paper.id)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-100 rounded" title="删除试卷">
+                              <button 
+                                  onClick={() => handleDeletePaper(paper.id)} 
+                                  className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-100 rounded" 
+                                  title="删除试卷"
+                              >
                                   <Trash2 className="h-4 w-4" />
                               </button>
                           )}
                       </div>
+
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-12"><Brain className="h-16 w-16 mx-auto text-gray-300 mb-4" /><h3 className="text-lg font-medium text-gray-900 mb-2">{t('courseDetail.papers.emptyTitle')}</h3><p className="text-gray-500">{t('courseDetail.papers.emptyDescription')}</p></div>
+                <div className="text-center py-12">
+                  <Brain className="h-16 w-16 mx-auto text-gray-300 mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">{t('courseDetail.papers.emptyTitle')}</h3>
+                  <p className="text-gray-500">{t('courseDetail.papers.emptyDescription')}</p>
+                </div>
               )}
             </div>
           )}

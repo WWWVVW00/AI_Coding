@@ -211,11 +211,25 @@ export const materialsAPI = {
       const query = new URLSearchParams(params).toString();
       return apiFetch(`/materials/course/${courseId}?${query}`);
   },
-  upload: (formData) => apiFetch('/materials/upload', {
-    method: 'POST',
-    body: formData,
-    headers: {} 
-  }),
+  // ***** 用这个新版本替换旧的 upload 方法 *****
+  upload: (formData) => {
+    const file = formData.get('files'); // 假设一次只上传一个文件，或者取第一个
+    const headers = {};
+
+    if (file && file.name) {
+        // 将原始文件名转换为 latin1 编码，放入自定义请求头
+        // 这是为了解决 express/multer 在解析 multipart/form-data 时对非 ASCII 文件名的兼容性问题
+        const latin1Encoder = new TextEncoder({ encoding: 'latin1' });
+        const encodedName = Array.from(latin1Encoder.encode(file.name)).map(byte => String.fromCharCode(byte)).join('');
+        headers['X-Original-Filename'] = encodedName;
+    }
+
+    return apiFetch('/materials/upload', {
+        method: 'POST',
+        body: formData,
+        headers: headers, // 传递包含自定义头的 headers 对象
+    });
+  },
   delete: (id) => apiFetch(`/materials/${id}`, { method: 'DELETE' }),
   download: (id) => downloadFile(`/materials/${id}/download`, `material_${id}.pdf`),
 };
