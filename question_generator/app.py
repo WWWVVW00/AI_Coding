@@ -58,6 +58,7 @@ class QuestionResponse(BaseModel):
     answer: str
     difficulty: str
     topic: str
+    explanation: str = Field(description="Detailed explanation of the topic covered by this question")
 
 class GenerationResult(BaseModel):
     questions: List[QuestionResponse]
@@ -144,7 +145,7 @@ text_splitter = RecursiveCharacterTextSplitter(
 # Prompt template
 prompt_template = PromptTemplate(
     input_variables=["materials", "num_questions"],
-    template="""Based on the following educational materials, generate {num_questions} high-quality exam questions with detailed answers.
+    template="""Based on the following educational materials, generate {num_questions} high-quality exam questions with detailed answers and topic explanations.
 
 Materials:
 {materials}
@@ -154,6 +155,7 @@ For each question, provide:
 2. A detailed answer
 3. Difficulty level (easy/medium/hard)
 4. Main topic
+5. A comprehensive explanation of the topic/concept covered by this question
 
 Format your response as JSON:
 {{
@@ -162,7 +164,8 @@ Format your response as JSON:
       "question": "question text",
       "answer": "detailed answer",
       "difficulty": "medium",
-      "topic": "main topic"
+      "topic": "main topic",
+      "explanation": "detailed explanation of the topic/concept covered by this question, including background knowledge, key concepts, and why this topic is important"
     }}
   ]
 }}
@@ -275,6 +278,7 @@ def generate_questions(materials: str, num_questions: int) -> dict:
             current_answer = ""
             current_difficulty = "medium"
             current_topic = "general"
+            current_explanation = "This question covers fundamental concepts from the provided materials."
             
             for line in lines:
                 line = line.strip()
@@ -284,12 +288,16 @@ def generate_questions(materials: str, num_questions: int) -> dict:
                             "question": current_question,
                             "answer": current_answer or "Answer based on the provided materials",
                             "difficulty": current_difficulty,
-                            "topic": current_topic
+                            "topic": current_topic,
+                            "explanation": current_explanation
                         })
                     current_question = line
                     current_answer = ""
+                    current_explanation = "This question covers fundamental concepts from the provided materials."
                 elif line.lower().startswith(('answer', 'a:', 'a.', '**answer')):
                     current_answer = line
+                elif line.lower().startswith(('explanation', 'explain', 'concept')):
+                    current_explanation = line
                 elif line and current_question and not current_answer:
                     current_answer = line
             
@@ -299,7 +307,8 @@ def generate_questions(materials: str, num_questions: int) -> dict:
                     "question": current_question,
                     "answer": current_answer or "Answer based on the provided materials",
                     "difficulty": current_difficulty,
-                    "topic": current_topic
+                    "topic": current_topic,
+                    "explanation": current_explanation
                 })
             
             # If no questions found, create basic ones
@@ -308,7 +317,8 @@ def generate_questions(materials: str, num_questions: int) -> dict:
                     "question": f"Based on the materials about {materials[:50]}..., explain the key concepts.",
                     "answer": f"The materials discuss: {materials[:200]}...",
                     "difficulty": "medium",
-                    "topic": "general"
+                    "topic": "general",
+                    "explanation": f"This question tests understanding of the core concepts presented in the educational materials. The topic involves {materials[:100]}... and is fundamental to comprehending the subject matter."
                 }]
             
             return {

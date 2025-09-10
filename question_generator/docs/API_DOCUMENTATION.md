@@ -15,7 +15,7 @@ Complete API usage guide for the Question Generator Microservice.
 
 ## 📖 Overview
 
-The Question Generator API provides AI-powered question generation from educational materials. It supports both text input and PDF file uploads.
+The Question Generator API provides AI-powered question generation from educational materials. It supports both text input and PDF file uploads. Each generated question includes a detailed topic explanation to provide additional learning context.
 
 ### Base URL
 ```
@@ -24,6 +24,20 @@ http://localhost:8000
 
 ### Content Type
 All requests expect `application/json` content type unless specified otherwise.
+
+### Response Format
+
+Each generated question includes the following fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `question` | string | The generated question text |
+| `answer` | string | Detailed answer to the question |
+| `difficulty` | string | Difficulty level: "easy", "medium", or "hard" |
+| `topic` | string | Main topic or subject area covered |
+| `explanation` | string | Comprehensive explanation of the topic/concept, including background knowledge and why it's important |
+
+The `explanation` field provides educational context that helps learners understand the broader concepts being tested, making it valuable for both learning and teaching scenarios.
 
 ## 🔐 Authentication
 
@@ -88,7 +102,8 @@ POST /generate
       "question": "string",
       "answer": "string",
       "difficulty": "easy|medium|hard",
-      "topic": "string"
+      "topic": "string",
+      "explanation": "string"
     }
   ],
   "generation_time": float
@@ -117,7 +132,8 @@ POST /generate/pdf
       "question": "string",
       "answer": "string",
       "difficulty": "easy|medium|hard",
-      "topic": "string"
+      "topic": "string",
+      "explanation": "string"
     }
   ],
   "generation_time": float,
@@ -157,19 +173,22 @@ curl -X POST http://localhost:8000/generate \
       "question": "What are the main characteristics of Python as a programming language?",
       "answer": "Python is a high-level programming language known for its simplicity and readability, supporting multiple programming paradigms.",
       "difficulty": "easy",
-      "topic": "programming basics"
+      "topic": "programming basics",
+      "explanation": "This question tests understanding of Python's fundamental characteristics. Python is designed to be readable and simple, making it an excellent choice for beginners while remaining powerful for advanced applications. Understanding these characteristics helps developers appreciate why Python is widely used in various domains."
     },
     {
       "question": "Which programming paradigms does Python support?",
       "answer": "Python supports procedural, object-oriented, and functional programming paradigms.",
       "difficulty": "medium",
-      "topic": "programming concepts"
+      "topic": "programming concepts",
+      "explanation": "This question evaluates knowledge of programming paradigms available in Python. Understanding different paradigms is crucial for choosing the right approach for different problems and writing more effective code. Python's flexibility in supporting multiple paradigms makes it versatile for various programming styles."
     },
     {
       "question": "Why is Python considered beginner-friendly?",
       "answer": "Python is considered beginner-friendly due to its simple syntax and high readability.",
       "difficulty": "easy",
-      "topic": "language features"
+      "topic": "language features",
+      "explanation": "This question focuses on Python's accessibility to new programmers. The simple syntax reduces the learning curve, allowing beginners to focus on learning programming concepts rather than complex syntax rules. This characteristic has made Python a popular choice for introductory programming courses."
     }
   ],
   "generation_time": 2.45
@@ -193,13 +212,15 @@ curl -X POST http://localhost:8000/generate/pdf \
       "question": "Based on the textbook content, explain the concept discussed in Chapter 1.",
       "answer": "Detailed answer based on the PDF content...",
       "difficulty": "medium",
-      "topic": "chapter 1"
+      "topic": "chapter 1",
+      "explanation": "This question assesses comprehension of the foundational concepts introduced in the first chapter. Understanding these concepts is essential as they form the basis for more advanced topics covered later in the textbook."
     },
     {
       "question": "What are the key points mentioned in the document?",
       "answer": "Summary of key points from the PDF...",
       "difficulty": "easy",
-      "topic": "general"
+      "topic": "general",
+      "explanation": "This question tests the ability to identify and summarize the main ideas presented in the document. Being able to extract key points is a fundamental skill for effective learning and information processing."
     }
   ],
   "generation_time": 3.12,
@@ -267,6 +288,8 @@ for i, question in enumerate(result['questions'], 1):
     print(f"Q{i}: {question['question']}")
     print(f"A{i}: {question['answer']}")
     print(f"Difficulty: {question['difficulty']}")
+    print(f"Topic: {question['topic']}")
+    print(f"Explanation: {question['explanation']}")
     print("-" * 50)
 ```
 
@@ -331,6 +354,8 @@ async function main() {
             console.log(`Q${index + 1}: ${q.question}`);
             console.log(`A${index + 1}: ${q.answer}`);
             console.log(`Difficulty: ${q.difficulty}`);
+            console.log(`Topic: ${q.topic}`);
+            console.log(`Explanation: ${q.explanation}`);
             console.log('-'.repeat(50));
         });
         
