@@ -372,10 +372,10 @@ function CourseDetailView({ course, setCurrentView }) {
                         <div className="flex items-start flex-1">
                           <FileText className="h-5 w-5 text-gray-400 mr-3 mt-1" />
                           <div className="flex-1">
-                            <h4 className="font-medium text-gray-900">{material.name}</h4>
+                            <h4 className="font-medium text-gray-900">{material.title}</h4>
                             <p className="text-sm text-gray-600 mt-1">{material.description}</p>
                             <p className="text-xs text-gray-500 mt-2">
-                              {t('courseDetail.materials.uploader')}: {material.uploaderName} • {new Date(material.createdAt).toLocaleDateString()}
+                              {t('courseDetail.materials.uploader')}: {material.uploader_full_name || material.uploader_name} • {new Date(material.created_at).toLocaleDateString()}
                             </p>
                           </div>
                         </div>
@@ -415,7 +415,7 @@ function CourseDetailView({ course, setCurrentView }) {
                             <h4 className="font-medium text-gray-900">{paper.title}</h4>
                             <p className="text-sm text-gray-600 mt-1">{paper.description}</p>
                             <div className="flex items-center text-xs text-gray-500 mt-2 space-x-4">
-                              <span>{t('courseDetail.papers.creator')}: {paper.creatorName}</span>
+                              <span>{t('courseDetail.papers.creator')}: {paper.creator_name}</span>
                               <span>{t('courseDetail.papers.totalScore')}: {paper.total_questions}</span>
                               <span>{t('courseDetail.papers.duration')}: {paper.estimated_time || 'N/A'}{t('courseDetail.papers.minutes')}</span>
                             </div>
