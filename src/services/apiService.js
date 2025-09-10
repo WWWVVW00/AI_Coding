@@ -116,6 +116,59 @@ async function downloadFile(endpoint, filename) {
   }
 }
 
+async function downloadFileWithPost(endpoint, body) {
+  const token = localStorage.getItem('token');
+  const headers = {
+    'Content-Type': 'application/json'
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const apiUrl = `${API_BASE_URL}${endpoint}`;
+
+  try {
+    const response = await fetch(apiUrl, { 
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({
+        message: `下載失敗，狀態碼: ${response.status}`,
+      }));
+      throw new Error(errorData.message || errorData.error || '下載失敗');
+    }
+
+    const blob = await response.blob();
+    
+    const disposition = response.headers.get('content-disposition');
+    let finalFilename = `translated_paper.txt`; // 備用檔名
+    if (disposition && disposition.indexOf('attachment') !== -1) {
+        const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(disposition);
+        if (matches != null && matches[1]) {
+            finalFilename = decodeURIComponent(matches[1].replace(/['"]/g, ''));
+        }
+    }
+    
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = finalFilename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+
+  } catch (error) {
+    console.error(`File download from ${apiUrl} failed:`, error.message);
+    alert(`下載失敗: ${error.message}`);
+    throw error;
+  }
+}
+
 // ==========================================================
 // API 端点定义 (这部分不需要修改)
 // ==========================================================
@@ -158,11 +211,25 @@ export const materialsAPI = {
       const query = new URLSearchParams(params).toString();
       return apiFetch(`/materials/course/${courseId}?${query}`);
   },
-  upload: (formData) => apiFetch('/materials/upload', {
-    method: 'POST',
-    body: formData,
-    headers: {} 
-  }),
+  // ***** 用这个新版本替换旧的 upload 方法 *****
+  upload: (formData) => {
+    const file = formData.get('files'); // 假设一次只上传一个文件，或者取第一个
+    const headers = {};
+
+    if (file && file.name) {
+        // 将原始文件名转换为 latin1 编码，放入自定义请求头
+        // 这是为了解决 express/multer 在解析 multipart/form-data 时对非 ASCII 文件名的兼容性问题
+        const latin1Encoder = new TextEncoder({ encoding: 'latin1' });
+        const encodedName = Array.from(latin1Encoder.encode(file.name)).map(byte => String.fromCharCode(byte)).join('');
+        headers['X-Original-Filename'] = encodedName;
+    }
+
+    return apiFetch('/materials/upload', {
+        method: 'POST',
+        body: formData,
+        headers: headers, // 传递包含自定义头的 headers 对象
+    });
+  },
   delete: (id) => apiFetch(`/materials/${id}`, { method: 'DELETE' }),
   download: (id) => downloadFile(`/materials/${id}/download`, `material_${id}.pdf`),
 };
@@ -183,6 +250,11 @@ export const papersAPI = {
     const filename = `paper_${id}${includeAnswers ? '_answers' : ''}.txt`;
     return downloadFile(endpoint, filename);
   },
+  // **新增這個方法**
+  translateAndDownload: (id, targetLang, includeAnswers = false) => {
+    // 這個請求比較特殊，我們直接在 downloadFile 內部處理
+    return downloadFileWithPost(`/papers/${id}/translate-and-download`, { targetLang, includeAnswers });
+  }
 };
 
 // 评论 API 已移除

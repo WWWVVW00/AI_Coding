@@ -145,32 +145,31 @@ text_splitter = RecursiveCharacterTextSplitter(
 # Prompt template (替换为这个新版本)
 prompt_template = PromptTemplate(
     input_variables=["materials", "num_questions"],
-    template="""Based on the following educational materials, generate {num_questions} high-quality exam questions.
+    template="""You are an expert exam creator. Your task is to generate {num_questions} high-quality exam questions STRICTLY based on the provided "Educational Materials". Do not use any external knowledge.
 
-Materials:
+Educational Materials:
+---
 {materials}
+---
 
-For each question, you MUST generate five distinct fields:
-1. "question": The question text itself.
-2. "answer": A concise and direct answer to the question.
-3. "explanation": A DETAILED explanation. **This is critical.** The explanation MUST:
-    - Be significantly more detailed and longer than the answer.
-    - NEVER be a simple copy of the answer.
-    - Explain the 'why' or 'how' behind the correct answer.
-    - If possible, define key terms from the question or reference concepts from the provided materials.
-4. "difficulty": The difficulty level (must be one of: "easy", "medium", "hard").
-5. "topic": A brief topic or keyword for the question.
+For each question, you MUST generate the following five fields in a JSON format:
+1. "question": The question text itself. It must be answerable solely from the provided materials.
+2. "answer": A concise and direct answer to the question, derived directly from the materials.
+3. "explanation": A detailed explanation of why the answer is correct, referencing concepts or sentences from the provided materials. This must be more detailed than the answer.
+4. "difficulty": The difficulty level (must be one of: "easy", "medium", "hard"). "Easy" for direct recall, "Medium" for comprehension, "Hard" for application or synthesis.
+5. "topic": A brief topic or keyword for the question, based on the material's content (e.g., "Statistical Learning", "Web Analytics Process").
 
-Format your response as a valid JSON object with a single key "questions" which is a list of objects.
-Here is an example of the desired format and quality:
+Format your entire response as a single valid JSON object with a key "questions", which contains a list of question objects. Do not add any text before or after the JSON object.
+
+Example Format:
 {{
   "questions": [
     {{
-      "question": "In web analytics, what is the difference between a micro and a macro conversion?",
-      "answer": "A macro conversion is the primary business goal (e.g., a sale), while a micro conversion is a smaller, supporting user action (e.g., adding to cart).",
-      "explanation": "A macro conversion represents the ultimate objective of a website, such as a completed purchase on an e-commerce site. It directly contributes to the main business purpose. A micro conversion, on the other hand, is an intermediate step that indicates user engagement and progress towards the macro goal. Examples include signing up for a newsletter, watching a product video, or adding an item to the shopping cart. Tracking micro conversions is crucial for understanding the user journey and identifying potential drop-off points before the final goal is reached.",
-      "difficulty": "medium",
-      "topic": "Web Analytics Conversions"
+      "question": "What is the primary goal of a web analytics process according to the provided text?",
+      "answer": "To analyze campaign Return On Investment (ROI).",
+      "explanation": "The provided material explicitly states that a direct benefit of implementing the web analytics process is the ability for companies to 'analyze campaign Return On Investment (ROI)'. This helps in understanding the effectiveness of marketing efforts.",
+      "difficulty": "easy",
+      "topic": "Benefits of Web Analytics"
     }}
   ]
 }}

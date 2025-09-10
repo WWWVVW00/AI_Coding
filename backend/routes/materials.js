@@ -16,29 +16,34 @@ const storage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    // 生成唯一文件名
+    // 生成唯一文件名，保留原始扩展名
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
+    // ***** 核心修改 #1：手动处理文件名编码 *****
+    // file.originalname 可能是乱码，我们从请求头中获取原始文件名
+    // 前端需要确保在发送请求时添加 'X-Original-Filename' 头
+    const originalName = req.headers['x-original-filename'] ? Buffer.from(req.headers['x-original-filename'], 'latin1').toString('utf8') : file.originalname;
+    const ext = path.extname(originalName);
     cb(null, `material-${uniqueSuffix}${ext}`);
   }
 });
 
 const fileFilter = (req, file, cb) => {
-  // 允许的文件类型 - 只支持纯文本和PDF
+  // 允许的文件类型
   const allowedTypes = [
     'application/pdf',
-    'text/plain'
+    'text/plain',
+    'application/msword', // .doc
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+    'application/vnd.ms-powerpoint', // .ppt
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation', // .pptx
   ];
-
-  // 检查文件扩展名作为备用验证
-  const fileExt = file.originalname.toLowerCase().split('.').pop();
-  const allowedExtensions = ['pdf', 'txt'];
+  const fileExt = path.extname(file.originalname).toLowerCase();
+  const allowedExtensions = ['.pdf', '.txt', '.doc', '.docx', '.ppt', '.pptx'];
 
   if (allowedTypes.includes(file.mimetype) || allowedExtensions.includes(fileExt)) {
     cb(null, true);
   } else {
-    console.error(`不支持的文件类型: ${file.mimetype}, 文件名: ${file.originalname}, 扩展名: ${fileExt}`);
-    cb(new Error(`不支持的文件类型: ${file.mimetype || fileExt}。仅支持纯文本文件(.txt)和PDF文件(.pdf)`), false);
+    cb(new Error(`不支持的文件类型: ${file.mimetype || fileExt}。`), false);
   }
 };
 
@@ -46,8 +51,9 @@ const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: {
+    // ***** 核心修改 #2：将后端文件大小限制提高到 50MB *****
     fileSize: 50 * 1024 * 1024, // 50MB
-    files: 10 // 最多10个文件
+    files: 10
   }
 });
 
@@ -263,6 +269,8 @@ router.post('/upload', authenticateToken, upload.array('files', 10), async (req,
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
+
+      const originalName = req.headers['x-original-filename'] ? Buffer.from(req.headers['x-original-filename'], 'latin1').toString('utf8') : file.originalname;
       
       // 计算文件哈希
       const fileHash = await calculateFileHash(file.path);
@@ -303,9 +311,10 @@ router.post('/upload', authenticateToken, upload.array('files', 10), async (req,
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `,
         params: [
-          courseId, userId, title || file.originalname, description || '',
-          file.originalname, file.path, file.size,
-          path.extname(file.originalname).toLowerCase().slice(1),
+          courseId, userId, title || originalName, description || '', // 使用 originalName 作为标题备选项
+          originalName, // **** 确保这里使用的是解码后的文件名 ****
+          file.path, file.size,
+          path.extname(originalName).toLowerCase().slice(1),
           file.mimetype, materialType || 'other', year || new Date().getFullYear(),
           tags ? JSON.stringify(tags.split(',').map(tag => tag.trim())) : null,
           isPublic === 'true'
@@ -358,37 +367,57 @@ router.post('/upload', authenticateToken, upload.array('files', 10), async (req,
 });
 
 // 下载资料
-// 下载资料 (用这个新版本替换整个函数)
-router.get('/:id/download', optionalAuth, async (req, res, next) => {
+router.get('/:id/download', optionalAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const { includeAnswers = 'false' } = req.query;
-    const userId = req.user?.id; // 关键：获取可能存在的用户ID
+    const userId = req.user?.id;
 
-    // 关键：查询逻辑必须包含对所有权的检查
-    const paperQuery = await executeQuery(`
-      SELECT p.*, c.name as course_name, c.code as course_code
-      FROM generated_papers p JOIN courses c ON p.course_id = c.id
-      WHERE p.id = ? AND (p.is_public = TRUE OR p.created_by = ?)
-    `, [id, userId || 0]); // 如果未登录，userId为0，不会匹配任何私有试卷
-    
-    if (paperQuery.length === 0) {
-      return res.status(404).json({ error: '试卷不存在或您没有权限下载' });
+    // 1. 查询资料，并验证权限 (公开 或 属于自己)
+    const materials = await executeQuery(`
+      SELECT m.*, c.name as course_name
+      FROM materials m
+      JOIN courses c ON m.course_id = c.id
+      WHERE m.id = ? AND (m.is_public = TRUE OR m.uploaded_by = ?)
+    `, [id, userId || 0]);
+
+    if (materials.length === 0) {
+      return res.status(404).json({ error: '资料不存在或您没有权限下载' });
     }
-    const paper = paperQuery[0];
 
-    const questions = await executeQuery('SELECT * FROM paper_questions WHERE paper_id = ? ORDER BY question_number ASC', [id]);
+    const material = materials[0];
+    const filePath = material.file_path;
+
+    // 2. 检查物理文件是否存在
+    if (!await fs.pathExists(filePath)) {
+      console.error(`文件丢失: 数据库记录存在，但物理文件找不到。路径: ${filePath}`);
+      return res.status(404).json({ error: '文件在服务器上已丢失，请联系管理员' });
+    }
+
+    // 3. 记录下载日志
+    if (userId) {
+      await executeQuery(`
+        INSERT INTO download_logs (user_id, item_type, item_id, ip_address, user_agent)
+        VALUES (?, 'material', ?, ?, ?)
+      `, [userId, id, req.ip, req.get('User-Agent')]);
+    }
+
+    // 4. 更新下载计数
+    await executeQuery(
+      'UPDATE materials SET download_count = download_count + 1 WHERE id = ?',
+      [id]
+    );
+
+    // 5. 设置响应头并发送文件流
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(material.file_name)}"`);
+    res.setHeader('Content-Type', material.mime_type || 'application/octet-stream'); // 提供备用 MIME 类型
+    res.setHeader('Content-Length', material.file_size);
     
-    await executeQuery('UPDATE generated_papers SET download_count = download_count + 1 WHERE id = ?', [id]);
-    
-    const content = generatePaperContent(paper, questions, includeAnswers === 'true');
-    
-    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(paper.title)}.txt"`);
-    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-    res.send(content);
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
 
   } catch (error) {
-    next(error);
+    console.error('下载资料失败:', error);
+    res.status(500).json({ error: '下载资料失败', message: '服务器内部错误，请稍后重试' });
   }
 });
 
