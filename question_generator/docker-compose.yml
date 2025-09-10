@@ -54,22 +54,3 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-
-  # Optional: Redis for production task storage (uncomment if needed)
-  # redis:
-  #   image: redis:7-alpine
-  #   ports:
-  #     - "6379:6379"
-  #   command: redis-server --appendonly yes
-  #   volumes:
-  #     - redis_data:/data
-  #   restart: unless-stopped
-  #   healthcheck:
-  #     test: ["CMD", "redis-cli", "ping"]
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 3
-
-# Optional: Named volumes for data persistence
-# volumes:
-#   redis_data:

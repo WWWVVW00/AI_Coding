@@ -7,6 +7,7 @@ function CourseDetailView({ course, setCurrentView }) {
   const { t, translateDynamic, currentLanguage } = useTranslation();
   const [activeTab, setActiveTab] = useState('overview');
   const [materials, setMaterials] = useState([]);
+  const [selectedMaterials, setSelectedMaterials] = useState([]); // 用户选择的材料ID
   const [sharedPapers, setSharedPapers] = useState([]);
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -69,15 +70,44 @@ function CourseDetailView({ course, setCurrentView }) {
     try {
       const formData = new FormData();
       formData.append('courseId', course.id);
-      Array.from(files).forEach(file => formData.append('files', file));
+      formData.append('materialType', 'other');
+      formData.append('isPublic', 'true');
+      formData.append('year', new Date().getFullYear().toString());
+      
+      Array.from(files).forEach((file, index) => {
+        formData.append('files', file);
+        // 为每个文件设置标题（如果没有提供，后端会使用文件名）
+        if (!formData.has('title')) {
+          formData.append('title', file.name);
+        }
+      });
       
       await materialsAPI.upload(formData);
       await loadCourseData();
       event.target.value = '';
     } catch (error) {
       console.error(t('courseDetail.error.uploadError'), error);
+      alert(`上传失败: ${error.message}`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 处理材料选择
+  const handleMaterialSelection = (materialId, isSelected) => {
+    if (isSelected) {
+      setSelectedMaterials(prev => [...prev, materialId]);
+    } else {
+      setSelectedMaterials(prev => prev.filter(id => id !== materialId));
+    }
+  };
+
+  // 全选/取消全选材料
+  const handleSelectAllMaterials = (selectAll) => {
+    if (selectAll) {
+      setSelectedMaterials(materials.map(m => m.id));
+    } else {
+      setSelectedMaterials([]);
     }
   };
 
@@ -87,17 +117,26 @@ function CourseDetailView({ course, setCurrentView }) {
       return;
     }
 
+    if (selectedMaterials.length === 0) {
+      alert('请至少选择一个学习资料用于生成试卷');
+      return;
+    }
+
     setLoading(true);
     try {
       await papersAPI.generate({
         courseId: course.id,
         title: `${course.name} - 智能生成试卷`,
+        description: `基于 ${selectedMaterials.length} 个学习资料智能生成的试卷`,
+        difficultyLevel: 'medium',
         totalQuestions: 10,
-        materialIds: materials.map(m => m.id)
+        isPublic: true,
+        sourceMaterials: selectedMaterials
       });
       await loadCourseData();
     } catch (error) {
       console.error(t('courseDetail.error.generateError'), error);
+      alert(`生成试卷失败: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -248,6 +287,7 @@ function CourseDetailView({ course, setCurrentView }) {
                   <input
                     type="file"
                     multiple
+                    accept=".txt,.pdf,text/plain,application/pdf"
                     onChange={handleFileUpload}
                     className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-cityu-orange hover:file:bg-orange-100"
                     disabled={loading}
@@ -264,9 +304,54 @@ function CourseDetailView({ course, setCurrentView }) {
                       </div>
                     </div>
                   </div>
+                  
+                  {/* 材料选择区域 */}
+                  {materials.length > 0 && (
+                    <div className="mb-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-sm font-medium text-gray-700">选择用于生成试卷的材料:</h4>
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleSelectAllMaterials(true)}
+                            className="text-xs text-cityu-red hover:underline"
+                          >
+                            全选
+                          </button>
+                          <button
+                            onClick={() => handleSelectAllMaterials(false)}
+                            className="text-xs text-gray-500 hover:underline"
+                          >
+                            取消全选
+                          </button>
+                        </div>
+                      </div>
+                      <div className="max-h-32 overflow-y-auto border border-gray-200 rounded-md p-2 bg-white">
+                        {materials.map((material) => (
+                          <label key={material.id} className="flex items-center space-x-2 p-1 hover:bg-gray-50 rounded">
+                            <input
+                              type="checkbox"
+                              checked={selectedMaterials.includes(material.id)}
+                              onChange={(e) => handleMaterialSelection(material.id, e.target.checked)}
+                              className="rounded border-gray-300 text-cityu-red focus:ring-cityu-red"
+                            />
+                            <span className="text-sm text-gray-700 flex-1">
+                              {material.title || material.file_name}
+                              <span className="text-xs text-gray-500 ml-1">
+                                (.{material.file_type})
+                              </span>
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        已选择 {selectedMaterials.length} / {materials.length} 个材料
+                      </p>
+                    </div>
+                  )}
+                  
                   <button
                     onClick={handleGeneratePaper}
-                    disabled={loading || materials.length === 0}
+                    disabled={loading || materials.length === 0 || selectedMaterials.length === 0}
                     className="w-full px-4 py-2 bg-cityu-gradient text-white rounded-lg hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   >
                     {loading ? t('courseDetail.overview.generating') : t('courseDetail.overview.generateButton')}

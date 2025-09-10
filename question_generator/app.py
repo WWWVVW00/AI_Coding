@@ -15,6 +15,8 @@ from enum import Enum
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_google_genai import ChatGoogleGenerativeAI
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -91,19 +93,47 @@ def get_llm():
     if llm is None:
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
-            raise HTTPException(
-                status_code=500, 
-                detail="OPENAI_API_KEY environment variable not set"
-            )
+            return get_llm_google()
         
         llm = ChatOpenAI(
-            model=os.getenv("OPENAI_MODEL", "gpt-3.5-turbo"),
-            api_key=api_key,
-            base_url=os.getenv("OPENAI_BASE_URL"),
+           model=os.getenv("OPENAI_MODEL", "gpt-3.5-turbo"),
+           api_key=api_key,
+           base_url=os.getenv("OPENAI_BASE_URL"),
+           temperature=0.7,
+           max_tokens=2000
+        )
+
+        # --- 核心改动：使用 ChatGoogleGenerativeAI ---
+        # llm = ChatGoogleGenerativeAI(
+        #     model=os.getenv("GOOGLE_MODEL", "gemini-2.5-pro"),
+        #     google_api_key=api_key,
+        #     temperature=0.7,
+        #     convert_system_message_to_human=True # Gemini需要这个设置
+        # )
+    return llm
+
+def get_llm_google():
+    """Lazy initialization of LLM client for Google Gemini"""
+    global llm
+    if llm is None:
+        # 1. 明确检查 GOOGLE_API_KEY
+        api_key = os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            # 2. 抛出正确的错误信息
+            raise HTTPException(
+                status_code=500, 
+                detail="GOOGLE_API_KEY environment variable not set"
+            )
+        
+        # 3. 初始化 ChatGoogleGenerativeAI
+        llm = ChatGoogleGenerativeAI(
+            model=os.getenv("GOOGLE_MODEL", "gemini-pro"),
+            google_api_key=api_key,
             temperature=0.7,
-            max_tokens=2000
+            convert_system_message_to_human=True 
         )
     return llm
+
 
 # Text splitter for large documents
 text_splitter = RecursiveCharacterTextSplitter(

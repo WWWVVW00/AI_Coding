@@ -10,14 +10,17 @@ const dbConfig = {
   database: process.env.DB_NAME || 'study_assistant',
   charset: 'utf8mb4',
   timezone: '+08:00',
-  acquireTimeout: 60000,
-  timeout: 60000,
-  reconnect: true,
+
+  // acquireTimeout: 60000,
+  // timeout: 60000,
+  // reconnect: true,
   // 连接池配置
+  waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
+  connectTimeout: 10000
   // 处理断开连接
-  handleDisconnects: true
+  // handleDisconnects: true
 };
 
 // 创建连接池

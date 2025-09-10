@@ -1,609 +1,537 @@
 const express = require('express');
 const router = express.Router();
-const { executeQuery, executeTransaction, buildPaginationQuery, buildSearchConditions } = require('../config/database');
+const axios = require('axios'); // 用于发送HTTP请求
+const fs = require('fs/promises'); // 用于异步读取文件
+const { 
+  executeQuery, 
+  executeTransaction, 
+  buildPaginationQuery, 
+  buildSearchConditions 
+} = require('../config/database');
 const { authenticateToken, optionalAuth } = require('../middleware/auth');
-const { validatePaperGeneration, validateQuestion } = require('../middleware/validation');
+const { validatePaperGeneration } = require('../middleware/validation');
 
-// 获取试卷列表
-router.get('/', optionalAuth, async (req, res) => {
-  try {
-    const { 
-      page = 1, 
-      limit = 20, 
-      search = '', 
-      courseId = '', 
-      difficulty = '',
-      language = '',
-      sort = 'created_at',
-      order = 'DESC'
-    } = req.query;
-
-    let baseQuery = `
-      SELECT 
-        p.*,
-        u.username as creator_name,
-        u.full_name as creator_full_name,
-        c.name as course_name,
-        c.code as course_code,
-        AVG(ur.rating) as average_rating,
-        COUNT(ur.id) as rating_count
-      FROM generated_papers p
-      JOIN users u ON p.created_by = u.id
-      JOIN courses c ON p.course_id = c.id
-      LEFT JOIN user_ratings ur ON ur.item_type = 'paper' AND ur.item_id = p.id
-      WHERE p.is_public = TRUE
-    `;
-
-    const params = [];
-
-    // 搜索条件
-    if (search) {
-      const searchConditions = buildSearchConditions(['p.title', 'p.description'], search);
-      baseQuery += ` AND ${searchConditions.where}`;
-      params.push(...searchConditions.params);
-    }
-
-    // 课程筛选
-    if (courseId) {
-      baseQuery += ` AND p.course_id = ?`;
-      params.push(courseId);
-    }
-
-    // 难度筛选
-    if (difficulty) {
-      baseQuery += ` AND p.difficulty_level = ?`;
-      params.push(difficulty);
-    }
-
-    // 语言筛选
-    if (language) {
-      baseQuery += ` AND p.language = ?`;
-      params.push(language);
-    }
-
-    baseQuery += ` GROUP BY p.id`;
-
-    // 排序
-    const validSorts = ['title', 'created_at', 'download_count', 'like_count', 'view_count', 'average_rating'];
-    const validOrders = ['ASC', 'DESC'];
-    const sortField = validSorts.includes(sort) ? sort : 'created_at';
-    const sortOrder = validOrders.includes(order.toUpperCase()) ? order.toUpperCase() : 'DESC';
-
-    const paginatedQuery = buildPaginationQuery(
-      baseQuery, 
-      parseInt(page), 
-      parseInt(limit), 
-      `${sortField} ${sortOrder}`
-    );
-
-    const papers = await executeQuery(paginatedQuery, params);
-
-    // 获取总数
-    const countQuery = `
-      SELECT COUNT(DISTINCT p.id) as total
-      FROM generated_papers p
-      JOIN courses c ON p.course_id = c.id
-      WHERE p.is_public = TRUE
-      ${search ? `AND (p.title LIKE ? OR p.description LIKE ?)` : ''}
-      ${courseId ? `AND p.course_id = ?` : ''}
-      ${difficulty ? `AND p.difficulty_level = ?` : ''}
-      ${language ? `AND p.language = ?` : ''}
-    `;
-
-    const countParams = [];
-    if (search) {
-      countParams.push(`%${search}%`, `%${search}%`);
-    }
-    if (courseId) countParams.push(courseId);
-    if (difficulty) countParams.push(difficulty);
-    if (language) countParams.push(language);
-
-    const [{ total }] = await executeQuery(countQuery, countParams);
-
-    res.json({
-      papers,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total: parseInt(total),
-        pages: Math.ceil(total / limit)
-      }
-    });
-
-  } catch (error) {
-    console.error('获取试卷列表失败:', error);
-    res.status(500).json({ error: '获取试卷列表失败' });
+/**
+ * 辅助函数：根据提供的资料ID数组，获取材料信息，包括文本内容和PDF文件
+ * @param {number[]} materialIds - 学习资料的ID数组
+ * @returns {Promise<{textContent: string, pdfFiles: Array}>} - 返回文本内容和PDF文件信息
+ */
+async function getMaterialsData(materialIds) {
+  if (!materialIds || materialIds.length === 0) {
+    return { textContent: "", pdfFiles: [] };
   }
-});
-
-// 获取单个试卷详情
-router.get('/:id', optionalAuth, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const userId = req.user?.id;
-
-    const papers = await executeQuery(`
-      SELECT 
-        p.*,
-        u.username as creator_name,
-        u.full_name as creator_full_name,
-        c.name as course_name,
-        c.code as course_code,
-        AVG(ur.rating) as average_rating,
-        COUNT(ur.id) as rating_count
-      FROM generated_papers p
-      JOIN users u ON p.created_by = u.id
-      JOIN courses c ON p.course_id = c.id
-      LEFT JOIN user_ratings ur ON ur.item_type = 'paper' AND ur.item_id = p.id
-      WHERE p.id = ? AND (p.is_public = TRUE OR p.created_by = ?)
-      GROUP BY p.id
-    `, [id, userId || 0]);
-
-    if (papers.length === 0) {
-      return res.status(404).json({ error: '试卷不存在或不可访问' });
-    }
-
-    const paper = papers[0];
-
-    // 获取试卷题目
-    const questions = await executeQuery(`
-      SELECT * FROM paper_questions 
-      WHERE paper_id = ? 
-      ORDER BY question_number ASC
-    `, [id]);
-
-    // 增加浏览次数
-    await executeQuery(
-      'UPDATE generated_papers SET view_count = view_count + 1 WHERE id = ?',
-      [id]
-    );
-
-    // 获取用户是否已收藏此试卷
-    let isFavorited = false;
-    if (userId) {
-      const favorites = await executeQuery(
-        'SELECT id FROM user_favorites WHERE user_id = ? AND item_type = "paper" AND item_id = ?',
-        [userId, id]
-      );
-      isFavorited = favorites.length > 0;
-    }
-
-    res.json({
-      paper: {
-        ...paper,
-        isFavorited
-      },
-      questions
-    });
-
-  } catch (error) {
-    console.error('获取试卷详情失败:', error);
-    res.status(500).json({ error: '获取试卷详情失败' });
-  }
-});
-
-// 生成新试卷
-router.post('/generate', authenticateToken, validatePaperGeneration, async (req, res) => {
-  try {
-    const { 
-      courseId, title, description, difficultyLevel, totalQuestions, 
-      estimatedTime, language, isPublic, sourceMaterials 
-    } = req.body;
-    const userId = req.user.id;
-
-    // 验证课程是否存在
-    const course = await executeQuery('SELECT id FROM courses WHERE id = ?', [courseId]);
-    if (course.length === 0) {
-      return res.status(404).json({ error: '课程不存在' });
-    }
-
-    // 验证源资料是否存在（如果提供了）
-    if (sourceMaterials && sourceMaterials.length > 0) {
-      const materials = await executeQuery(
-        `SELECT id FROM materials WHERE id IN (${sourceMaterials.map(() => '?').join(',')}) AND course_id = ?`,
-        [...sourceMaterials, courseId]
-      );
-
-      if (materials.length !== sourceMaterials.length) {
-        return res.status(400).json({ error: '部分源资料不存在或不属于该课程' });
-      }
-    }
-
-    // 创建试卷记录
-    const paperResult = await executeQuery(`
-      INSERT INTO generated_papers (
-        course_id, created_by, title, description, difficulty_level,
-        total_questions, estimated_time, language, is_public, source_materials
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      courseId,
-      userId,
-      title,
-      description || null,
-      difficultyLevel || 'medium',
-      totalQuestions,
-      estimatedTime || null,
-      language || 'zh',
-      isPublic !== false,
-      sourceMaterials ? JSON.stringify(sourceMaterials) : null
-    ]);
-
-    const paperId = paperResult.insertId;
-
-    // 这里应该调用AI服务生成题目，现在先生成模拟题目
-    const mockQuestions = generateMockQuestions(totalQuestions, difficultyLevel || 'medium', language || 'zh');
-
-    // 插入题目
-    const questionQueries = mockQuestions.map((question, index) => ({
-      sql: `
-        INSERT INTO paper_questions (
-          paper_id, question_number, question_type, question_text,
-          options, correct_answer, explanation, points, difficulty
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `,
-      params: [
-        paperId,
-        index + 1,
-        question.type,
-        question.text,
-        question.options ? JSON.stringify(question.options) : null,
-        question.answer,
-        question.explanation,
-        question.points || 1,
-        question.difficulty || difficultyLevel || 'medium'
-      ]
-    }));
-
-    await executeTransaction(questionQueries);
-
-    // 获取生成的试卷信息
-    const newPaper = await executeQuery(`
-      SELECT 
-        p.*,
-        c.name as course_name,
-        c.code as course_code
-      FROM generated_papers p
-      JOIN courses c ON p.course_id = c.id
-      WHERE p.id = ?
-    `, [paperId]);
-
-    res.status(201).json({
-      message: '试卷生成成功',
-      paper: newPaper[0]
-    });
-
-  } catch (error) {
-    console.error('生成试卷失败:', error);
-    res.status(500).json({ error: '生成试卷失败' });
-  }
-});
-
-// 模拟题目生成函数
-function generateMockQuestions(count, difficulty, language) {
-  const questions = [];
-  const questionTypes = ['multiple_choice', 'true_false', 'short_answer', 'calculation'];
   
-  for (let i = 0; i < count; i++) {
-    const type = questionTypes[Math.floor(Math.random() * questionTypes.length)];
-    
-    let question = {
-      type: type,
-      difficulty: difficulty,
-      points: type === 'multiple_choice' || type === 'true_false' ? 1 : 2
-    };
+  console.log('[DEBUG] 查询材料数据，IDs:', materialIds);
+  
+  // 构建正确的IN查询
+  const placeholders = materialIds.map(() => '?').join(',');
+  const query = `SELECT id, file_path, file_type, file_name FROM materials WHERE id IN (${placeholders})`;
+  
+  console.log('[DEBUG] SQL查询语句:', query);
+  console.log('[DEBUG] 查询参数:', materialIds);
+  
+  // 查询数据库获取文件路径
+  const materials = await executeQuery(query, materialIds);
+  
+  console.log('[DEBUG] 数据库查询结果:', materials.length, '条记录');
+  console.log('[DEBUG] 查询到的材料:', materials);
+  
+  let combinedText = "";
+  let pdfFiles = [];
 
-    if (language === 'zh') {
-      question.text = `这是第${i + 1}道${getQuestionTypeName(type)}题目。请根据所学知识回答以下问题...`;
-      question.explanation = `这道题考查的是基础概念的理解。正确答案的原理是...`;
+  for (const material of materials) {
+    console.log(`[DEBUG] 处理材料 ${material.id}: 类型=${material.file_type}, 路径=${material.file_path}`);
+    try {
+      // 检查文件是否存在
+      await fs.access(material.file_path);
+      console.log(`[DEBUG] 文件存在: ${material.file_path}`);
       
-      if (type === 'multiple_choice') {
-        question.options = ['A. 选项A', 'B. 选项B', 'C. 选项C', 'D. 选项D'];
-        question.answer = 'C';
-      } else if (type === 'true_false') {
-        question.options = ['A. 正确', 'B. 错误'];
-        question.answer = 'A';
+      if (material.file_type === 'pdf') {
+        // PDF文件直接保存路径，后续上传到生成服务
+        pdfFiles.push({
+          id: material.id,
+          filePath: material.file_path,
+          originalName: material.file_name || `material_${material.id}.pdf`
+        });
+        console.log(`[DEBUG] 添加PDF文件: ${material.file_name}`);
+      } else if (material.file_type === 'txt') {
+        // 纯文本文件读取内容
+        const text = await fs.readFile(material.file_path, 'utf8');
+        combinedText += `--- START OF MATERIAL ---\n${text}\n--- END OF MATERIAL ---\n\n`;
+        console.log(`[DEBUG] 读取文本文件: ${material.file_name}, 长度: ${text.length}`);
       } else {
-        question.answer = '这是标准答案的示例内容...';
+        console.warn(`[DEBUG] 跳过不支持的文件类型: ${material.file_type}, 文件: ${material.file_name}`);
       }
-    } else {
-      question.text = `This is question ${i + 1} of type ${type}. Please answer based on your knowledge...`;
-      question.explanation = `This question tests the understanding of basic concepts. The correct answer is based on...`;
-      
-      if (type === 'multiple_choice') {
-        question.options = ['A. Option A', 'B. Option B', 'C. Option C', 'D. Option D'];
-        question.answer = 'C';
-      } else if (type === 'true_false') {
-        question.options = ['A. True', 'B. False'];
-        question.answer = 'A';
-      } else {
-        question.answer = 'This is a sample standard answer...';
-      }
+    } catch (error) {
+      console.error(`[DEBUG] 无法读取或处理文件 ${material.file_path}:`, error.message);
+      // 即使某个文件读取失败，也继续处理其他文件
     }
-
-    questions.push(question);
   }
-
-  return questions;
+  
+  console.log('[DEBUG] 最终结果 - 文本长度:', combinedText.length, ', PDF数量:', pdfFiles.length);
+  
+  return { textContent: combinedText, pdfFiles };
 }
 
-function getQuestionTypeName(type) {
-  const typeNames = {
-    'multiple_choice': '选择',
-    'true_false': '判断',
-    'short_answer': '简答',
-    'calculation': '计算',
-    'essay': '论述'
-  };
-  return typeNames[type] || '其他';
-}
-
-// 更新试卷信息
-router.put('/:id', authenticateToken, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { title, description, isPublic } = req.body;
-    const userId = req.user.id;
-
-    // 检查试卷是否存在且用户有权限修改
-    const paper = await executeQuery(
-      'SELECT * FROM generated_papers WHERE id = ?',
-      [id]
-    );
-
-    if (paper.length === 0) {
-      return res.status(404).json({ error: '试卷不存在' });
-    }
-
-    if (paper[0].created_by !== userId && req.user.role !== 'admin') {
-      return res.status(403).json({ error: '没有权限修改此试卷' });
-    }
-
-    await executeQuery(`
-      UPDATE generated_papers SET
-        title = ?, description = ?, is_public = ?, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `, [title, description, isPublic, id]);
-
-    const updatedPaper = await executeQuery(`
-      SELECT 
-        p.*,
-        c.name as course_name,
-        c.code as course_code
-      FROM generated_papers p
-      JOIN courses c ON p.course_id = c.id
-      WHERE p.id = ?
-    `, [id]);
-
-    res.json({
-      message: '试卷更新成功',
-      paper: updatedPaper[0]
-    });
-
-  } catch (error) {
-    console.error('更新试卷失败:', error);
-    res.status(500).json({ error: '更新试卷失败' });
-  }
-});
-
-// 删除试卷
-router.delete('/:id', authenticateToken, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const userId = req.user.id;
-
-    const paper = await executeQuery(
-      'SELECT * FROM generated_papers WHERE id = ?',
-      [id]
-    );
-
-    if (paper.length === 0) {
-      return res.status(404).json({ error: '试卷不存在' });
-    }
-
-    if (paper[0].created_by !== userId && req.user.role !== 'admin') {
-      return res.status(403).json({ error: '没有权限删除此试卷' });
-    }
-
-    // 删除试卷（题目会因为外键约束自动删除）
-    await executeQuery('DELETE FROM generated_papers WHERE id = ?', [id]);
-
-    res.json({ message: '试卷删除成功' });
-
-  } catch (error) {
-    console.error('删除试卷失败:', error);
-    res.status(500).json({ error: '删除试卷失败' });
-  }
-});
-
-// 下载试卷
-router.get('/:id/download', optionalAuth, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { format = 'txt', includeAnswers = 'false' } = req.query;
-    const userId = req.user?.id;
-
-    const papers = await executeQuery(`
-      SELECT 
-        p.*,
-        c.name as course_name,
-        c.code as course_code
-      FROM generated_papers p
-      JOIN courses c ON p.course_id = c.id
-      WHERE p.id = ? AND (p.is_public = TRUE OR p.created_by = ?)
-    `, [id, userId || 0]);
-
-    if (papers.length === 0) {
-      return res.status(404).json({ error: '试卷不存在或不可下载' });
-    }
-
-    const paper = papers[0];
-
-    // 获取题目
-    const questions = await executeQuery(`
-      SELECT * FROM paper_questions 
-      WHERE paper_id = ? 
-      ORDER BY question_number ASC
-    `, [id]);
-
-    // 记录下载日志
-    if (userId) {
-      await executeQuery(`
-        INSERT INTO download_logs (user_id, item_type, item_id, ip_address, user_agent)
-        VALUES (?, 'paper', ?, ?, ?)
-      `, [userId, id, req.ip, req.get('User-Agent')]);
-    }
-
-    // 增加下载计数
-    await executeQuery(
-      'UPDATE generated_papers SET download_count = download_count + 1 WHERE id = ?',
-      [id]
-    );
-
-    // 生成文件内容
-    let content = generatePaperContent(paper, questions, includeAnswers === 'true', format);
-
-    // 设置响应头
-    const filename = `${paper.title}.${format}`;
-    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
-    res.setHeader('Content-Type', format === 'pdf' ? 'application/pdf' : 'text/plain; charset=utf-8');
-
-    res.send(content);
-
-  } catch (error) {
-    console.error('下载试卷失败:', error);
-    res.status(500).json({ error: '下载试卷失败' });
-  }
-});
-
-// 生成试卷内容
-function generatePaperContent(paper, questions, includeAnswers, format) {
-  let content = `${paper.title}\n`;
+/**
+ * 辅助函数：将试卷和题目数据格式化为可下载的文本文件。
+ * @param {object} paper - 试卷信息对象
+ * @param {object[]} questions - 题目数组
+ * @param {boolean} includeAnswers - 是否包含答案和解析
+ * @returns {string} - 格式化后的文本内容
+ */
+function generatePaperContent(paper, questions, includeAnswers) {
+  let content = `${paper.title}\n\n`;
   content += `课程：${paper.course_name} (${paper.course_code})\n`;
-  content += `难度：${paper.difficulty_level}\n`;
-  content += `题目数量：${paper.total_questions}\n`;
-  if (paper.estimated_time) {
-    content += `预计时间：${paper.estimated_time}分钟\n`;
-  }
-  content += `\n${'='.repeat(50)}\n\n`;
+  content += `难度：${paper.difficulty_level || '中等'}\n`;
+  content += `题目数量：${paper.total_questions}\n\n`;
+  content += `${'='.repeat(50)}\n\n`;
 
-  questions.forEach((question, index) => {
-    content += `${index + 1}. ${question.question_text}\n`;
-    
-    if (question.options) {
-      const options = JSON.parse(question.options);
-      options.forEach(option => {
-        content += `   ${option}\n`;
-      });
-    }
-    
-    content += '\n';
-    
+  questions.forEach((q, index) => {
+    content += `题目 ${index + 1}: ${q.question_text}\n\n`;
     if (includeAnswers) {
-      content += `答案：${question.correct_answer}\n`;
-      if (question.explanation) {
-        content += `解析：${question.explanation}\n`;
+      content += `答案：${q.correct_answer}\n`;
+      if (q.explanation) {
+        content += `解析：${q.explanation}\n`;
       }
       content += '\n';
     }
-    
-    content += '-'.repeat(30) + '\n\n';
+    content += `${'-'.repeat(30)}\n\n`;
   });
 
   return content;
 }
 
-// 点赞试卷
-router.post('/:id/like', authenticateToken, async (req, res) => {
+// ==========================================================
+// API 路由
+// ==========================================================
+
+// --- [核心功能] 生成新试卷 ---
+router.post('/generate', authenticateToken, validatePaperGeneration, async (req, res, next) => {
+  try {
+    console.log('=== 开始试卷生成流程 ===');
+    const { 
+      courseId, title, description, difficultyLevel, totalQuestions, 
+      isPublic, sourceMaterials 
+    } = req.body;
+    const userId = req.user.id;
+
+    console.log('[DEBUG] 接收到的请求参数:', {
+      courseId,
+      title,
+      description,
+      difficultyLevel,
+      totalQuestions,
+      isPublic,
+      sourceMaterials,
+      userId
+    });
+
+    // 1. 从文件系统中获取学习资料数据（文本内容和PDF文件）
+    console.log('[STEP 1] 开始获取学习资料数据...');
+    console.log('[DEBUG] 待处理的资料ID列表:', sourceMaterials);
+    
+    const { textContent, pdfFiles } = await getMaterialsData(sourceMaterials);
+    
+    console.log('[STEP 1] 资料数据获取完成:');
+    console.log('  - 文本内容长度:', textContent ? textContent.length : 0);
+    console.log('  - PDF文件数量:', pdfFiles.length);
+    if (pdfFiles.length > 0) {
+      console.log('  - PDF文件列表:', pdfFiles.map(pdf => ({ id: pdf.id, name: pdf.originalName, path: pdf.filePath })));
+    }
+    
+    // 检查是否有可用的材料
+    if (!textContent && pdfFiles.length === 0 && sourceMaterials && sourceMaterials.length > 0) {
+      console.log('[ERROR] 无法从提供的资料中提取可读的内容');
+      return res.status(400).json({ error: '无法从提供的资料中提取可读的内容。' });
+    }
+
+    console.log('[STEP 2] 开始选择API端点并准备请求...');
+    let taskId;
+    let aiServiceUrl;
+
+    // 2. 根据材料类型选择合适的API端点
+    if (pdfFiles.length > 0) {
+      // 优先使用PDF上传API（目前只支持单个PDF文件）
+      const pdfFile = pdfFiles[0]; // 取第一个PDF文件
+      aiServiceUrl = `${process.env.QUESTION_GENERATOR_URL}/tasks/generate/pdf`;
+      console.log('[STEP 2] 选择PDF上传模式');
+      console.log(`[DEBUG] PDF API URL: ${aiServiceUrl}`);
+      console.log(`[DEBUG] 使用的PDF文件:`, {
+        id: pdfFile.id,
+        name: pdfFile.originalName,
+        path: pdfFile.filePath
+      });
+
+      const FormData = require('form-data');
+      const form = new FormData();
+      
+      // 读取PDF文件并添加到表单
+      console.log('[DEBUG] 正在创建文件流...');
+      const pdfStream = require('fs').createReadStream(pdfFile.filePath);
+      form.append('pdf_file', pdfStream, {
+        filename: pdfFile.originalName,
+        contentType: 'application/pdf'
+      });
+      form.append('num_questions', totalQuestions.toString());
+      
+      console.log('[DEBUG] 表单数据准备完成，开始发送请求...');
+      console.log(`[AI] 正在调用PDF上传API: ${aiServiceUrl}`);
+
+      const submitResponse = await axios.post(aiServiceUrl, form, {
+        headers: {
+          ...form.getHeaders(),
+        },
+        maxBodyLength: Infinity,
+        maxContentLength: Infinity
+      });
+
+      taskId = submitResponse.data.task_id;
+      console.log(`[AI] PDF任务已提交成功！`);
+      console.log(`[DEBUG] 任务ID: ${taskId}`);
+      console.log(`[DEBUG] 文件名: ${pdfFile.originalName}`);
+      console.log(`[DEBUG] 服务器响应:`, submitResponse.data);
+      
+    } else {
+      // 使用文本API
+      aiServiceUrl = `${process.env.QUESTION_GENERATOR_URL}/tasks/generate`;
+      console.log('[STEP 2] 选择文本API模式');
+      console.log(`[DEBUG] 文本API URL: ${aiServiceUrl}`);
+      
+      const generationInput = textContent || '通用知识';
+      console.log(`[DEBUG] 输入文本长度: ${generationInput.length}`);
+      console.log(`[DEBUG] 文本内容预览: ${generationInput.substring(0, 200)}...`);
+      
+      const requestPayload = {
+        materials: generationInput.substring(0, 20000), // 限制上下文长度
+        num_questions: totalQuestions
+      };
+      
+      console.log('[DEBUG] 请求载荷:', {
+        materials_length: requestPayload.materials.length,
+        num_questions: requestPayload.num_questions
+      });
+      console.log(`[AI] 正在调用文本API: ${aiServiceUrl}`);
+      
+      const submitResponse = await axios.post(aiServiceUrl, requestPayload);
+
+      taskId = submitResponse.data.task_id;
+      console.log(`[AI] 文本任务已提交成功！`);
+      console.log(`[DEBUG] 任务ID: ${taskId}`);
+      console.log(`[DEBUG] 服务器响应:`, submitResponse.data);
+    }
+
+    if (!taskId) {
+      console.log('[ERROR] AI服务未能返回有效的任务ID');
+      throw new Error('AI服务未能返回有效的任务ID');
+    }
+
+    console.log('[STEP 3] 开始轮询AI服务获取任务状态...');
+    console.log(`[DEBUG] 任务ID: ${taskId}`);
+    console.log(`[DEBUG] 最大轮询次数: 100 (约8.5分钟)`);
+    
+    // 3. 轮询AI服务获取任务状态
+    let taskStatus;
+    const maxAttempts = 100; // 最多轮询30次（约8.5分钟）
+    
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      console.log(`[POLLING] 第 ${attempt + 1}/${maxAttempts} 次查询，等待5秒...`);
+      await new Promise(resolve => setTimeout(resolve, 5000)); // 等待5秒
+      
+      const statusUrl = `${process.env.QUESTION_GENERATOR_URL}/tasks/${taskId}/status`;
+      console.log(`[DEBUG] 查询状态URL: ${statusUrl}`);
+      
+      const statusResponse = await axios.get(statusUrl);
+      taskStatus = statusResponse.data;
+
+      console.log(`[POLLING] 任务状态响应:`, taskStatus);
+
+      if (taskStatus.status === 'completed') {
+        console.log(`[SUCCESS] 任务 ${taskId} 已完成！`);
+        console.log(`[DEBUG] 完成时间: 第 ${attempt + 1} 次查询`);
+        break;
+      }
+      if (taskStatus.status === 'failed') {
+        console.log(`[ERROR] 任务失败:`, taskStatus.error_message);
+        throw new Error(`AI任务生成失败: ${taskStatus.error_message}`);
+      }
+      console.log(`[POLLING] 任务 ${taskId} 状态: ${taskStatus.status}, 进度: ${taskStatus.progress || '处理中'}`);
+    }
+
+    if (!taskStatus || taskStatus.status !== 'completed') {
+      console.log('[ERROR] 任务超时或状态异常');
+      console.log('[DEBUG] 最终状态:', taskStatus);
+      throw new Error('AI任务超时，请稍后重试或减少题目数量。');
+    }
+
+    console.log('[STEP 4] 开始获取任务结果...');
+    // 4. 获取任务结果
+    const resultUrl = `${process.env.QUESTION_GENERATOR_URL}/tasks/${taskId}/result`;
+    console.log(`[DEBUG] 结果获取URL: ${resultUrl}`);
+    
+    const resultResponse = await axios.get(resultUrl);
+    const taskResult = resultResponse.data.result;
+
+    console.log('[DEBUG] 任务结果响应:', resultResponse.data);
+    console.log('[DEBUG] 解析后的结果:', taskResult);
+
+    if (!taskResult) {
+      console.log('[ERROR] 无法获取AI任务结果');
+      throw new Error('无法获取AI任务结果');
+    }
+
+    const { questions } = taskResult;
+    console.log(`[SUCCESS] 获取到 ${questions.length} 道题目`);
+    console.log('[DEBUG] 题目预览:', questions.slice(0, 2));
+
+    console.log('[STEP 5] 开始将结果存入数据库...');
+    
+    // 5. 将AI返回的结果存入数据库
+    console.log('[DEBUG] 插入试卷基本信息...');
+    const paperResult = await executeQuery(`
+      INSERT INTO generated_papers (
+        course_id, created_by, title, description, difficulty_level,
+        total_questions, is_public, source_materials
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      courseId, userId, title, description || null, difficultyLevel || 'medium',
+      questions.length, isPublic !== false, sourceMaterials ? JSON.stringify(sourceMaterials) : null
+    ]);
+
+    const paperId = paperResult.insertId;
+    console.log(`[DEBUG] 试卷插入成功，ID: ${paperId}`);
+
+    console.log('[DEBUG] 准备插入题目数据...');
+    const questionQueries = questions.map((q, index) => {
+      console.log(`[DEBUG] 题目 ${index + 1}:`, {
+        question: q.question.substring(0, 100) + '...',
+        answer: q.answer,
+        difficulty: q.difficulty,
+        topic: q.topic
+      });
+      
+      return {
+        sql: `
+          INSERT INTO paper_questions (
+            paper_id, question_number, question_type, question_text,
+            correct_answer, explanation, difficulty
+          ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        `,
+        params: [
+          paperId, index + 1, 'essay', q.question,
+          q.answer, q.answer, q.difficulty
+        ]
+      };
+    });
+
+    console.log(`[DEBUG] 开始批量插入 ${questionQueries.length} 道题目...`);
+    await executeTransaction(questionQueries);
+    console.log('[SUCCESS] 题目插入完成');
+
+    console.log('[DEBUG] 查询新创建的试卷信息...');
+    const newPaper = await executeQuery('SELECT * FROM generated_papers WHERE id = ?', [paperId]);
+    console.log('[DEBUG] 新试卷信息:', newPaper[0]);
+
+    console.log('=== 试卷生成流程完成 ===');
+    res.status(201).json({ message: '试卷智能生成成功！', paper: newPaper[0] });
+
+  } catch (error) {
+    console.log('[ERROR] 试卷生成过程中发生错误:');
+    console.log('[ERROR] 错误类型:', error.name);
+    console.log('[ERROR] 错误消息:', error.message);
+    console.log('[ERROR] 错误堆栈:', error.stack);
+    if (error.response) {
+      console.log('[ERROR] HTTP响应错误:', {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: error.response.data
+      });
+    }
+    next(error); // 将错误传递给全局错误处理器
+  }
+});
+
+
+// --- [读取] 获取试卷列表（支持分页、搜索、筛选） ---
+router.get('/', optionalAuth, async (req, res, next) => {
+  try {
+    const { 
+      page = 1, limit = 20, search = '', courseId = '', difficulty = '',
+      sort = 'created_at', order = 'DESC'
+    } = req.query;
+
+    let baseQuery = `
+      SELECT 
+        p.*, u.username as creator_name, c.name as course_name, c.code as course_code
+      FROM generated_papers p
+      JOIN users u ON p.created_by = u.id
+      JOIN courses c ON p.course_id = c.id
+      WHERE p.is_public = TRUE
+    `;
+    const params = [];
+
+    if (search) {
+      const searchConditions = buildSearchConditions(['p.title', 'p.description'], search);
+      baseQuery += ` AND ${searchConditions.where}`;
+      params.push(...searchConditions.params);
+    }
+    if (courseId) {
+      baseQuery += ` AND p.course_id = ?`;
+      params.push(courseId);
+    }
+    if (difficulty) {
+      baseQuery += ` AND p.difficulty_level = ?`;
+      params.push(difficulty);
+    }
+
+    const validSorts = ['title', 'created_at', 'download_count', 'like_count', 'view_count'];
+    const sortField = validSorts.includes(sort) ? `p.${sort}` : 'p.created_at';
+    const sortOrder = ['ASC', 'DESC'].includes(order.toUpperCase()) ? order.toUpperCase() : 'DESC';
+
+    const paginatedQuery = buildPaginationQuery(baseQuery, page, limit, `${sortField} ${sortOrder}`);
+    const papers = await executeQuery(paginatedQuery, params);
+
+    // 获取总数
+    // 获取总数
+    let countQuery = `SELECT COUNT(DISTINCT p.id) as total FROM generated_papers p WHERE p.is_public = TRUE`;
+    
+    // --- 修改点：在动态添加 AND 条件之前，先加一个空格 ---
+    const conditions = [];
+    const countParams = [];
+
+    if (search) {
+      const searchConditions = buildSearchConditions(['p.title', 'p.description'], search);
+      conditions.push(searchConditions.where);
+      countParams.push(...searchConditions.params);
+    }
+    if (courseId) {
+      conditions.push('p.course_id = ?');
+      countParams.push(courseId);
+    }
+    if (difficulty) {
+      conditions.push('p.difficulty_level = ?');
+      countParams.push(difficulty);
+    }
+    
+    if (conditions.length > 0) {
+      // 这里确保了每个 AND 前面都有空格
+      countQuery += ' AND ' + conditions.join(' AND ');
+    }
+
+    const [{ total }] = await executeQuery(countQuery, countParams);
+    
+    res.json({ papers, pagination: { page: parseInt(page), limit: parseInt(limit), total, pages: Math.ceil(total / limit) } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// --- [读取] 获取单个试卷详情及其题目 ---
+router.get('/:id', optionalAuth, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+
+    const paperQuery = await executeQuery(`
+      SELECT p.*, u.username as creator_name, c.name as course_name, c.code as course_code
+      FROM generated_papers p
+      JOIN users u ON p.created_by = u.id
+      JOIN courses c ON p.course_id = c.id
+      WHERE p.id = ? AND (p.is_public = TRUE OR p.created_by = ?)
+    `, [id, userId || 0]);
+
+    if (paperQuery.length === 0) {
+      return res.status(404).json({ error: '试卷不存在或您没有权限查看' });
+    }
+    const paper = paperQuery[0];
+
+    const questions = await executeQuery('SELECT * FROM paper_questions WHERE paper_id = ? ORDER BY question_number ASC', [id]);
+    
+    await executeQuery('UPDATE generated_papers SET view_count = view_count + 1 WHERE id = ?', [id]);
+
+    res.json({ paper, questions });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// --- [更新] 更新试卷信息 (例如标题、描述) ---
+router.put('/:id', authenticateToken, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { title, description, isPublic } = req.body;
+    const userId = req.user.id;
+
+    const [paper] = await executeQuery('SELECT created_by FROM generated_papers WHERE id = ?', [id]);
+    if (!paper) {
+      return res.status(404).json({ error: '试卷不存在' });
+    }
+    if (paper.created_by !== userId && req.user.role !== 'admin') {
+      return res.status(403).json({ error: '没有权限修改此试卷' });
+    }
+
+    await executeQuery(
+      'UPDATE generated_papers SET title = ?, description = ?, is_public = ?, updated_at = NOW() WHERE id = ?',
+      [title, description, isPublic, id]
+    );
+
+    const [updatedPaper] = await executeQuery('SELECT * FROM generated_papers WHERE id = ?', [id]);
+    res.json({ message: '试卷更新成功', paper: updatedPaper });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// --- [删除] 删除试卷 ---
+router.delete('/:id', authenticateToken, async (req, res, next) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
 
-    // 检查是否已经点赞
-    const existingLike = await executeQuery(
-      'SELECT id FROM user_favorites WHERE user_id = ? AND item_type = "paper" AND item_id = ?',
-      [userId, id]
-    );
-
-    if (existingLike.length > 0) {
-      // 取消点赞
-      await executeQuery(
-        'DELETE FROM user_favorites WHERE user_id = ? AND item_type = "paper" AND item_id = ?',
-        [userId, id]
-      );
-      
-      await executeQuery(
-        'UPDATE generated_papers SET like_count = like_count - 1 WHERE id = ?',
-        [id]
-      );
-
-      res.json({ message: '取消点赞成功', liked: false });
-    } else {
-      // 添加点赞
-      await executeQuery(
-        'INSERT INTO user_favorites (user_id, item_type, item_id) VALUES (?, "paper", ?)',
-        [userId, id]
-      );
-      
-      await executeQuery(
-        'UPDATE generated_papers SET like_count = like_count + 1 WHERE id = ?',
-        [id]
-      );
-
-      res.json({ message: '点赞成功', liked: true });
+    const [paper] = await executeQuery('SELECT created_by FROM generated_papers WHERE id = ?', [id]);
+    if (!paper) {
+      return res.status(404).json({ error: '试卷不存在' });
+    }
+    if (paper.created_by !== userId && req.user.role !== 'admin') {
+      return res.status(403).json({ error: '没有权限删除此试卷' });
     }
 
+    await executeQuery('DELETE FROM generated_papers WHERE id = ?', [id]);
+    res.json({ message: '试卷删除成功' });
   } catch (error) {
-    console.error('点赞操作失败:', error);
-    res.status(500).json({ error: '点赞操作失败' });
+    next(error);
   }
 });
 
-// 获取热门试卷
-router.get('/popular/list', async (req, res) => {
+// --- [功能] 下载试卷为文本文件 ---
+router.get('/:id/download', optionalAuth, async (req, res, next) => {
   try {
-    const { limit = 10, courseId } = req.query;
+    const { id } = req.params;
+    const { includeAnswers = 'false' } = req.query;
 
-    let query = `
-      SELECT 
-        p.*,
-        u.username as creator_name,
-        c.name as course_name,
-        c.code as course_code,
-        AVG(ur.rating) as average_rating,
-        COUNT(ur.id) as rating_count
-      FROM generated_papers p
-      JOIN users u ON p.created_by = u.id
-      JOIN courses c ON p.course_id = c.id
-      LEFT JOIN user_ratings ur ON ur.item_type = 'paper' AND ur.item_id = p.id
-      WHERE p.is_public = TRUE
-    `;
-
-    const params = [];
-
-    if (courseId) {
-      query += ` AND p.course_id = ?`;
-      params.push(courseId);
+    const paperQuery = await executeQuery(`
+      SELECT p.*, c.name as course_name, c.code as course_code
+      FROM generated_papers p JOIN courses c ON p.course_id = c.id
+      WHERE p.id = ? AND p.is_public = TRUE
+    `, [id]);
+    
+    if (paperQuery.length === 0) {
+      return res.status(404).json({ error: '试卷不存在或不可下载' });
     }
+    const paper = paperQuery[0];
 
-    query += `
-      GROUP BY p.id
-      ORDER BY 
-        (p.download_count * 0.4 + 
-         p.like_count * 0.3 + 
-         p.view_count * 0.1 + 
-         AVG(COALESCE(ur.rating, 0)) * 0.2) DESC
-      LIMIT ?
-    `;
-
-    params.push(parseInt(limit));
-
-    const papers = await executeQuery(query, params);
-
-    res.json({ papers });
+    const questions = await executeQuery('SELECT * FROM paper_questions WHERE paper_id = ? ORDER BY question_number ASC', [id]);
+    
+    await executeQuery('UPDATE generated_papers SET download_count = download_count + 1 WHERE id = ?', [id]);
+    
+    const content = generatePaperContent(paper, questions, includeAnswers === 'true');
+    
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(paper.title)}.txt"`);
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.send(content);
 
   } catch (error) {
-    console.error('获取热门试卷失败:', error);
-    res.status(500).json({ error: '获取热门试卷失败' });
+    next(error);
   }
 });
 
