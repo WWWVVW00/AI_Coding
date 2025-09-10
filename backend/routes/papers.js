@@ -562,4 +562,89 @@ router.delete('/:id', authenticateToken, async (req, res, next) => {
   }
 });
 
+async function translateText(text, targetLang) {
+  if (!text) return text;
+  const target = targetLang === 'zh-cn' ? 'zh-CN' : (targetLang === 'zh-tw' ? 'zh-TW' : targetLang);
+  
+  // 這裡我們直接使用一個公共的、無需API Key的Google翻譯端點
+  // 注意：這在生產環境中可能有速率限制，但對於此項目是可行的
+  try {
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${target}&dt=t&q=${encodeURIComponent(text)}`;
+    const response = await axios.get(url);
+    if (response.data && response.data[0]) {
+      return response.data[0].map(item => item[0]).join('');
+    }
+    return text; // 翻譯失敗返回原文
+  } catch (error) {
+    console.error("翻譯失敗:", error.message);
+    return text; // 出錯時返回原文
+  }
+}
+
+// ==========================================================
+// [核心功能] 新增：翻譯並下載試卷
+// ==========================================================
+router.post('/:id/translate-and-download', optionalAuth, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { targetLang = 'zh-cn', includeAnswers = false } = req.body;
+    const userId = req.user?.id;
+
+    // 1. 獲取原始試卷數據 (權限檢查邏輯不變)
+    const paperQuery = await executeQuery(`
+      SELECT p.*, c.name as course_name, c.code as course_code
+      FROM generated_papers p JOIN courses c ON p.course_id = c.id
+      WHERE p.id = ? AND (p.is_public = TRUE OR p.created_by = ?)
+    `, [id, userId || 0]);
+    
+    if (paperQuery.length === 0) {
+      return res.status(404).json({ error: '試卷不存在或您沒有權限下載' });
+    }
+    let paper = paperQuery[0];
+    let questions = await executeQuery('SELECT * FROM paper_questions WHERE paper_id = ? ORDER BY question_number ASC', [id]);
+
+    // 2. 進行翻譯 (如果目標語言不是英文)
+    if (targetLang !== 'en') {
+        const paperPromises = [
+            translateText(paper.title, targetLang),
+            translateText(paper.description, targetLang),
+        ];
+        const [translatedTitle, translatedDescription] = await Promise.all(paperPromises);
+        paper.title = translatedTitle;
+        paper.description = translatedDescription;
+
+        // 並發翻譯所有題目、答案和解析
+        const questionTranslationPromises = questions.map(q => {
+            const promises = [translateText(q.question_text, targetLang)];
+            if (includeAnswers) {
+                promises.push(translateText(q.correct_answer, targetLang));
+                promises.push(translateText(q.explanation, targetLang));
+            }
+            return Promise.all(promises);
+        });
+
+        const translatedQuestions = await Promise.all(questionTranslationPromises);
+
+        questions = questions.map((q, i) => ({
+            ...q,
+            question_text: translatedQuestions[i][0],
+            correct_answer: includeAnswers ? translatedQuestions[i][1] : q.correct_answer,
+            explanation: includeAnswers ? translatedQuestions[i][2] : q.explanation,
+        }));
+    }
+
+    // 3. 生成翻譯後的文本內容
+    const content = generatePaperContent(paper, questions, includeAnswers);
+    
+    // 4. 發送文件
+    const filename = `${paper.title.replace(/[\/\\?%*:|"<>]/g, '-')}_${targetLang}.txt`;
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.send(content);
+
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, BookOpen, Calendar, User, Hash, GraduationCap, Upload, FileText, Brain, MessageCircle, Star, Download, Lock, Trash2, KeyRound } from 'lucide-react';
+import { ArrowLeft, BookOpen, Calendar, User, Hash, GraduationCap, Upload, FileText, Brain, MessageCircle, Star, Download, Lock, Trash2, KeyRound, Languages } from 'lucide-react';
 import { useTranslation } from '../../contexts/TranslationContext.jsx';
 import { materialsAPI, papersAPI, commentsAPI } from '../../services/apiService.js';
 
 function CourseDetailView({ user, course, setCurrentView }) {
-  const { t, translateDynamic, currentLanguage } = useTranslation();
+  const { t, currentLanguage, supportedLanguages, translateDynamic } = useTranslation(); // 獲取當前語言和語言列表
+  const [downloadLang, setDownloadLang] = useState(currentLanguage); // 新增狀態來管理下載語言選項
   
   // Tabs and Data
   const [activeTab, setActiveTab] = useState('overview');
@@ -170,9 +171,15 @@ function CourseDetailView({ user, course, setCurrentView }) {
 
   const handleDownloadPaper = async (paperId, includeAnswers) => {
     try {
-      await papersAPI.download(paperId, includeAnswers);
+        // 如果下載語言是英文 (原始語言)，調用舊的下載接口
+        if (downloadLang === 'en') {
+            await papersAPI.download(paperId, includeAnswers);
+        } else {
+            // 否則，調用新的翻譯下載接口
+            await papersAPI.translateAndDownload(paperId, downloadLang, includeAnswers);
+        }
     } catch (error) {
-      console.error('下载失败:', error);
+        console.error('下載失敗:', error);
     }
   };
 
@@ -303,13 +310,37 @@ function CourseDetailView({ user, course, setCurrentView }) {
                           </div>
                         </div>
                         <div className="flex items-center space-x-2 ml-2">
-                          {/* ***** 核心修改：将 <a> 换成 <button> ***** */}
-                          <button onClick={() => handleDownloadPaper(paper.id, false)} title="仅下载题目" className="flex items-center px-3 py-1 text-sm bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors"><FileText className="h-4 w-4 mr-1.5" />题目</button>
-                          <button onClick={() => handleDownloadPaper(paper.id, true)} title="下载题目、答案和解析" className="flex items-center px-3 py-1 text-sm bg-cityu-gradient text-white rounded hover:shadow-lg transition-all"><KeyRound className="h-4 w-4 mr-1.5" />答案</button>
+                          {/* 語言選擇下拉菜單 */}
+                          <div className="relative">
+                              <select
+                                  value={downloadLang}
+                                  onChange={(e) => setDownloadLang(e.target.value)}
+                                  className="pl-8 pr-2 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-50 appearance-none focus:outline-none focus:ring-1 focus:ring-cityu-orange"
+                              >
+                                  {supportedLanguages.map(lang => (
+                                      <option key={lang.code} value={lang.code}>{lang.nativeName}</option>
+                                  ))}
+                              </select>
+                              <Languages className="h-4 w-4 text-gray-400 absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          </div>
+
+                          {/* 下載按鈕 */}
+                          <button onClick={() => handleDownloadPaper(paper.id, false)} title={`下載 ${supportedLanguages.find(l=>l.code===downloadLang).nativeName} 題目`} className="flex items-center px-3 py-1 text-sm bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors">
+                              <FileText className="h-4 w-4 mr-1.5" />
+                              題目
+                          </button>
+                          <button onClick={() => handleDownloadPaper(paper.id, true)} title={`下載 ${supportedLanguages.find(l=>l.code===downloadLang).nativeName} 題目與答案`} className="flex items-center px-3 py-1 text-sm bg-cityu-gradient text-white rounded hover:shadow-lg transition-all">
+                              <KeyRound className="h-4 w-4 mr-1.5" />
+                              答案
+                          </button>
+                          
+                          {/* 刪除按鈕 (不變) */}
                           {user && user.id === paper.created_by && (
-                            <button onClick={() => handleDeletePaper(paper.id)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-100 rounded" title="删除试卷"><Trash2 className="h-4 w-4" /></button>
+                              <button onClick={() => handleDeletePaper(paper.id)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-100 rounded" title="删除试卷">
+                                  <Trash2 className="h-4 w-4" />
+                              </button>
                           )}
-                        </div>
+                      </div>
                       </div>
                     </div>
                   ))}
