@@ -63,6 +63,60 @@ async function apiFetch(endpoint, options = {}) {
 }
 
 // ==========================================================
+// **新增**：专门用于文件下载的函数
+// ==========================================================
+async function downloadFile(endpoint, filename) {
+  const token = localStorage.getItem('token');
+  const headers = {};
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const apiUrl = `${API_BASE_URL}${endpoint}`;
+
+  try {
+    const response = await fetch(apiUrl, { headers });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({
+        message: `下载失败，状态码: ${response.status}`,
+      }));
+      throw new Error(errorData.message || errorData.error || '下载失败');
+    }
+
+    // 将响应体转换为 Blob 对象
+    const blob = await response.blob();
+    
+    // 从响应头中尝试获取文件名
+    const disposition = response.headers.get('content-disposition');
+    let finalFilename = filename;
+    if (disposition && disposition.indexOf('attachment') !== -1) {
+        const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(disposition);
+        if (matches != null && matches[1]) {
+            finalFilename = decodeURIComponent(matches[1].replace(/['"]/g, ''));
+        }
+    }
+    
+    // 创建一个临时的 URL 指向 Blob 对象
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = finalFilename; // 设置下载的文件名
+    document.body.appendChild(a); // 将a标签添加到页面中
+    a.click(); // 模拟点击
+    a.remove(); // 下载后移除a标签
+    window.URL.revokeObjectURL(url); // 释放内存
+
+  } catch (error) {
+    console.error(`File download from ${apiUrl} failed:`, error.message);
+    // 向用户显示错误
+    alert(`下载失败: ${error.message}`);
+    throw error;
+  }
+}
+
+// ==========================================================
 // API 端点定义 (这部分不需要修改)
 // ==========================================================
 
@@ -109,6 +163,8 @@ export const materialsAPI = {
     body: formData,
     headers: {} 
   }),
+  delete: (id) => apiFetch(`/materials/${id}`, { method: 'DELETE' }),
+  download: (id) => downloadFile(`/materials/${id}/download`, `material_${id}.pdf`),
 };
 
 // 试卷 API
@@ -121,6 +177,12 @@ export const papersAPI = {
     method: 'POST',
     body: JSON.stringify(config),
   }),
+  delete: (id) => apiFetch(`/papers/${id}`, { method: 'DELETE' }),
+  download: (id, includeAnswers = false) => {
+    const endpoint = `/papers/${id}/download?includeAnswers=${includeAnswers}`;
+    const filename = `paper_${id}${includeAnswers ? '_answers' : ''}.txt`;
+    return downloadFile(endpoint, filename);
+  },
 };
 
 // 评论 API (示例, 后端需要实现)

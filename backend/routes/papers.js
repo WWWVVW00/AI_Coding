@@ -91,8 +91,11 @@ function generatePaperContent(paper, questions, includeAnswers) {
     content += `题目 ${index + 1}: ${q.question_text}\n\n`;
     if (includeAnswers) {
       content += `答案：${q.correct_answer}\n`;
-      if (q.explanation) {
+      // 核心修改：检查 explanation 是否有效
+      if (q.explanation && q.explanation.trim() !== '') {
         content += `解析：${q.explanation}\n`;
+      } else {
+        content += `解析：无\n`;
       }
       content += '\n';
     }
@@ -306,6 +309,7 @@ router.post('/generate', authenticateToken, validatePaperGeneration, async (req,
       console.log(`[DEBUG] 题目 ${index + 1}:`, {
         question: q.question.substring(0, 100) + '...',
         answer: q.answer,
+        explanation: q.explanation, // 确认 AI 返回了解析
         difficulty: q.difficulty,
         topic: q.topic
       });
@@ -319,7 +323,10 @@ router.post('/generate', authenticateToken, validatePaperGeneration, async (req,
         `,
         params: [
           paperId, index + 1, 'essay', q.question,
-          q.answer, q.answer, q.difficulty
+          q.answer, 
+          // 核心修改：如果 explanation 为空或不存在，就存入 null
+          (q.explanation && q.explanation.trim() !== '') ? q.explanation : null, 
+          q.difficulty
         ]
       };
     });
@@ -355,6 +362,7 @@ router.post('/generate', authenticateToken, validatePaperGeneration, async (req,
 // --- [读取] 获取试卷列表（支持分页、搜索、筛选） ---
 router.get('/', optionalAuth, async (req, res, next) => {
   try {
+    const userId = req.user?.id;
     const { 
       page = 1, limit = 20, search = '', courseId = '', difficulty = '',
       sort = 'created_at', order = 'DESC'
@@ -366,39 +374,53 @@ router.get('/', optionalAuth, async (req, res, next) => {
       FROM generated_papers p
       JOIN users u ON p.created_by = u.id
       JOIN courses c ON p.course_id = c.id
-      WHERE p.is_public = TRUE
     `;
     const params = [];
+    const conditions = [];
+
+    if (userId) {
+      // 登录用户：看公开的 + 自己的
+      conditions.push(`(p.is_public = TRUE OR p.created_by = ?)`);
+      params.push(userId);
+    } else {
+      conditions.push(`p.is_public = TRUE`);
+    }
 
     if (search) {
       const searchConditions = buildSearchConditions(['p.title', 'p.description'], search);
-      baseQuery += ` AND ${searchConditions.where}`;
+      conditions.push(searchConditions.where);
       params.push(...searchConditions.params);
     }
     if (courseId) {
-      baseQuery += ` AND p.course_id = ?`;
+      conditions.push(`p.course_id = ?`);
       params.push(courseId);
     }
     if (difficulty) {
-      baseQuery += ` AND p.difficulty_level = ?`;
+      conditions.push(`p.difficulty_level = ?`);
       params.push(difficulty);
     }
+
+    baseQuery += ' WHERE ' + conditions.join(' AND ');
 
     const validSorts = ['title', 'created_at', 'download_count', 'like_count', 'view_count'];
     const sortField = validSorts.includes(sort) ? `p.${sort}` : 'p.created_at';
     const sortOrder = ['ASC', 'DESC'].includes(order.toUpperCase()) ? order.toUpperCase() : 'DESC';
 
-    const paginatedQuery = buildPaginationQuery(baseQuery, page, limit, `${sortField} ${sortOrder}`);
+    const paginatedQuery = buildPaginationQuery(baseQuery, page, limit, `p.${sort} ${sortOrder}`);
     const papers = await executeQuery(paginatedQuery, params);
 
     // 获取总数
     // 获取总数
-    let countQuery = `SELECT COUNT(DISTINCT p.id) as total FROM generated_papers p WHERE p.is_public = TRUE`;
-    
-    // --- 修改点：在动态添加 AND 条件之前，先加一个空格 ---
-    const conditions = [];
+    let countQuery = `SELECT COUNT(DISTINCT p.id) as total FROM generated_papers p`;
     const countParams = [];
-
+    const countConditions = [];
+    
+    if (userId) {
+      countConditions.push(`(p.is_public = TRUE OR p.created_by = ?)`);
+      countParams.push(userId);
+    } else {
+      countConditions.push(`p.is_public = TRUE`);
+    }
     if (search) {
       const searchConditions = buildSearchConditions(['p.title', 'p.description'], search);
       conditions.push(searchConditions.where);
@@ -412,16 +434,53 @@ router.get('/', optionalAuth, async (req, res, next) => {
       conditions.push('p.difficulty_level = ?');
       countParams.push(difficulty);
     }
-    
-    if (conditions.length > 0) {
-      // 这里确保了每个 AND 前面都有空格
-      countQuery += ' AND ' + conditions.join(' AND ');
+    if (courseId) {
+      countConditions.push('p.course_id = ?');
+      countParams.push(courseId);
+    }
+    if (countConditions.length > 0) {
+      countQuery += ' WHERE ' + countConditions.join(' AND ');
     }
 
     const [{ total }] = await executeQuery(countQuery, countParams);
     
     res.json({ papers, pagination: { page: parseInt(page), limit: parseInt(limit), total, pages: Math.ceil(total / limit) } });
   } catch (error) {
+    next(error);
+  }
+});
+
+// --- [功能] 下载试卷为文本文件 ---
+// ********  这是被移动到前面的路由 ********
+router.get('/:id/download', optionalAuth, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { includeAnswers = 'false' } = req.query;
+    const userId = req.user?.id;
+
+    const paperQuery = await executeQuery(`
+      SELECT p.*, c.name as course_name, c.code as course_code
+      FROM generated_papers p JOIN courses c ON p.course_id = c.id
+      WHERE p.id = ? AND (p.is_public = TRUE OR p.created_by = ?)
+    `, [id, userId || 0]);
+    
+    if (paperQuery.length === 0) {
+      return res.status(404).json({ error: '试卷不存在或您没有权限下载' });
+    }
+    const paper = paperQuery[0];
+
+    const questions = await executeQuery('SELECT * FROM paper_questions WHERE paper_id = ? ORDER BY question_number ASC', [id]);
+    
+    await executeQuery('UPDATE generated_papers SET download_count = download_count + 1 WHERE id = ?', [id]);
+    
+    const content = generatePaperContent(paper, questions, includeAnswers === 'true');
+    
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(paper.title)}.txt"`);
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.send(content);
+
+  } catch (error)
+  {
     next(error);
   }
 });
@@ -498,38 +557,6 @@ router.delete('/:id', authenticateToken, async (req, res, next) => {
 
     await executeQuery('DELETE FROM generated_papers WHERE id = ?', [id]);
     res.json({ message: '试卷删除成功' });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// --- [功能] 下载试卷为文本文件 ---
-router.get('/:id/download', optionalAuth, async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { includeAnswers = 'false' } = req.query;
-
-    const paperQuery = await executeQuery(`
-      SELECT p.*, c.name as course_name, c.code as course_code
-      FROM generated_papers p JOIN courses c ON p.course_id = c.id
-      WHERE p.id = ? AND p.is_public = TRUE
-    `, [id]);
-    
-    if (paperQuery.length === 0) {
-      return res.status(404).json({ error: '试卷不存在或不可下载' });
-    }
-    const paper = paperQuery[0];
-
-    const questions = await executeQuery('SELECT * FROM paper_questions WHERE paper_id = ? ORDER BY question_number ASC', [id]);
-    
-    await executeQuery('UPDATE generated_papers SET download_count = download_count + 1 WHERE id = ?', [id]);
-    
-    const content = generatePaperContent(paper, questions, includeAnswers === 'true');
-    
-    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(paper.title)}.txt"`);
-    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-    res.send(content);
-
   } catch (error) {
     next(error);
   }
