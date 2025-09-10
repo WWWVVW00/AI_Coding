@@ -24,7 +24,7 @@ function LoginView({
             <div className="mx-auto w-16 h-16 bg-cityu-gradient rounded-full flex items-center justify-center mb-4">
               <BookOpen className="h-8 w-8 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-800 mb-2">智能學習助手</h1>
+            <h1 className="text-2xl font-bold text-gray-800 mb-2">城大智学坊 (CityU LearnSphere)</h1>
             <p className="text-gray-600">讓學習更智能，讓知識更有趣</p>
           </div>
           <div className="space-y-4">
