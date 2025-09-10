@@ -48,7 +48,6 @@ function CourseDetailView({ user, course, setCurrentView }) {
     if (!course) return;
     setLoading(true);
     try {
-      // Fetch materials and papers concurrently
       const [materialsRes, papersRes] = await Promise.all([
         materialsAPI.getByCourse(course.id),
         papersAPI.getByCourse(course.id),
@@ -85,8 +84,8 @@ function CourseDetailView({ user, course, setCurrentView }) {
       
       await materialsAPI.upload(formData);
       await loadCourseData();
-      event.target.value = ''; // Reset file input
-      setIsPublicUpload(true); // Reset checkbox
+      event.target.value = '';
+      setIsPublicUpload(true);
     } catch (error) {
       console.error(t('courseDetail.error.uploadError'), error);
       alert(`${t('courseDetail.error.uploadError')}: ${error.message}`);
@@ -125,7 +124,6 @@ function CourseDetailView({ user, course, setCurrentView }) {
         sourceMaterials: selectedMaterials
       });
       await loadCourseData();
-      // Reset after generation
       setSelectedMaterials([]);
       setIsPublicPaper(false);
     } catch (error) {
@@ -160,6 +158,24 @@ function CourseDetailView({ user, course, setCurrentView }) {
     }
   };
 
+  // ***** 核心修改：新的下载处理函数 *****
+  const handleDownloadMaterial = async (materialId) => {
+    try {
+      await materialsAPI.download(materialId);
+    } catch (error) {
+      // 错误已在 apiService 中 alert
+      console.error('下载失败:', error);
+    }
+  };
+
+  const handleDownloadPaper = async (paperId, includeAnswers) => {
+    try {
+      await papersAPI.download(paperId, includeAnswers);
+    } catch (error) {
+      console.error('下载失败:', error);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header Navigation */}
@@ -175,7 +191,6 @@ function CourseDetailView({ user, course, setCurrentView }) {
 
       {/* Course Info Card */}
       <div className="bg-cityu-gradient rounded-2xl p-8 text-white">
-        {/* ... Course details display, no changes needed here ... */}
          <div className="flex items-start justify-between">
           <div className="flex-1">
             <h1 className="text-3xl font-bold mb-2">{displayCourse.name}</h1>
@@ -206,7 +221,6 @@ function CourseDetailView({ user, course, setCurrentView }) {
           {/* Overview Tab */}
           {activeTab === 'overview' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Upload Materials Section */}
               <div className="bg-orange-50 p-6 rounded-lg">
                 <div className="flex items-center mb-4"><Upload className="h-8 w-8 text-cityu-orange mr-3" /><div><h3 className="text-lg font-semibold text-gray-900">{t('courseDetail.overview.uploadTitle')}</h3><p className="text-gray-600">{t('courseDetail.overview.uploadDescription')}</p></div></div>
                 <input type="file" multiple accept=".txt,.pdf,text/plain,application/pdf" onChange={handleFileUpload} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-cityu-orange hover:file:bg-orange-100" disabled={loading} />
@@ -216,7 +230,6 @@ function CourseDetailView({ user, course, setCurrentView }) {
                 </div>
               </div>
               
-              {/* Generate Paper Section */}
               <div className="bg-red-50 p-6 rounded-lg">
                 <div className="flex items-center mb-4"><Brain className="h-8 w-8 text-cityu-red mr-3" /><div><h3 className="text-lg font-semibold text-gray-900">{t('courseDetail.overview.generateTitle')}</h3><p className="text-gray-600">{t('courseDetail.overview.generateDescription')}</p></div></div>
                 {materials.length > 0 && (
@@ -247,20 +260,15 @@ function CourseDetailView({ user, course, setCurrentView }) {
                         <div className="flex-1">
                           <div className="flex items-center">
                             <h4 className="font-medium text-gray-900">{material.title}</h4>
-                            {!material.is_public && (
-                              <span className="ml-2 flex items-center px-2 py-0.5 bg-gray-200 text-gray-700 text-xs rounded-full">
-                                <Lock className="h-3 w-3 mr-1" />私有
-                              </span>
-                            )}
+                            {!material.is_public && (<span className="ml-2 flex items-center px-2 py-0.5 bg-gray-200 text-gray-700 text-xs rounded-full"><Lock className="h-3 w-3 mr-1" />私有</span>)}
                           </div>
                           <p className="text-sm text-gray-600 mt-1 line-clamp-2">{material.description || '无描述'}</p>
-                          <p className="text-xs text-gray-500 mt-2">
-                            {t('courseDetail.materials.uploader')}: {material.uploader_full_name || material.uploader_name} • {new Date(material.created_at).toLocaleDateString()}
-                          </p>
+                          <p className="text-xs text-gray-500 mt-2">{t('courseDetail.materials.uploader')}: {material.uploader_full_name || material.uploader_name} • {new Date(material.created_at).toLocaleDateString()}</p>
                         </div>
                       </div>
                       <div className="flex flex-col items-center space-y-1">
-                        <a href={`${import.meta.env.VITE_API_URL}/materials/${material.id}/download`} target="_blank" rel="noopener noreferrer" className="p-1 text-gray-400 hover:text-gray-600" title="下载"><Download className="h-4 w-4" /></a>
+                        {/* ***** 核心修改：将 <a> 换成 <button> ***** */}
+                        <button onClick={() => handleDownloadMaterial(material.id)} className="p-1 text-gray-400 hover:text-gray-600" title="下载"><Download className="h-4 w-4" /></button>
                         {user && user.id === material.uploaded_by && (
                           <button onClick={() => handleDeleteMaterial(material.id)} className="p-1 text-red-400 hover:text-red-600" title="删除资料"><Trash2 className="h-4 w-4" /></button>
                         )}
@@ -287,55 +295,21 @@ function CourseDetailView({ user, course, setCurrentView }) {
                           <div className="flex-1">
                             <div className="flex items-center">
                               <h4 className="font-medium text-gray-900">{paper.title}</h4>
-                              {!paper.is_public && (
-                                <span className="ml-2 flex items-center px-2 py-0.5 bg-gray-200 text-gray-700 text-xs rounded-full">
-                                  <Lock className="h-3 w-3 mr-1" />私有
-                                </span>
-                              )}
+                              {!paper.is_public && (<span className="ml-2 flex items-center px-2 py-0.5 bg-gray-200 text-gray-700 text-xs rounded-full"><Lock className="h-3 w-3 mr-1" />私有</span>)}
                             </div>
                             <p className="text-sm text-gray-600 mt-1">{paper.description}</p>
-                            <div className="flex items-center text-xs text-gray-500 mt-2 space-x-4">
-                              <span>{t('courseDetail.papers.creator')}: {paper.creator_name}</span>
-                              <span>题目数: {paper.total_questions}</span>
-                            </div>
+                            <div className="flex items-center text-xs text-gray-500 mt-2 space-x-4"><span>{t('courseDetail.papers.creator')}: {paper.creator_name}</span><span>题目数: {paper.total_questions}</span></div>
                             <div className="flex items-center mt-2"><Star className="h-4 w-4 text-yellow-400 mr-1" /><span className="text-sm text-gray-600">{paper.average_rating || 0}/5</span></div>
                           </div>
                         </div>
                         <div className="flex items-center space-x-2 ml-2">
-                          {/* 下载题目按钮 */}
-                          <a
-                            href={`${import.meta.env.VITE_API_URL}/papers/${paper.id}/download`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title="仅下载题目"
-                            className="flex items-center px-3 py-1 text-sm bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors"
-                          >
-                            <FileText className="h-4 w-4 mr-1.5" />
-                            题目
-                          </a>
-
-                          {/* 下载答案按钮 */}
-                          <a
-                            href={`${import.meta.env.VITE_API_URL}/papers/${paper.id}/download?includeAnswers=true`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title="下载题目、答案和解析"
-                            className="flex items-center px-3 py-1 text-sm bg-cityu-gradient text-white rounded hover:shadow-lg transition-all"
-                          >
-                            <KeyRound className="h-4 w-4 mr-1.5" />
-                            答案
-                          </a>
-                          {/* 删除按钮 */}
-                            {user && user.id === paper.created_by && (
-                              <button
-                                onClick={() => handleDeletePaper(paper.id)}
-                                className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-100 rounded"
-                                title="删除试卷"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            )}
-                          </div>
+                          {/* ***** 核心修改：将 <a> 换成 <button> ***** */}
+                          <button onClick={() => handleDownloadPaper(paper.id, false)} title="仅下载题目" className="flex items-center px-3 py-1 text-sm bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors"><FileText className="h-4 w-4 mr-1.5" />题目</button>
+                          <button onClick={() => handleDownloadPaper(paper.id, true)} title="下载题目、答案和解析" className="flex items-center px-3 py-1 text-sm bg-cityu-gradient text-white rounded hover:shadow-lg transition-all"><KeyRound className="h-4 w-4 mr-1.5" />答案</button>
+                          {user && user.id === paper.created_by && (
+                            <button onClick={() => handleDeletePaper(paper.id)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-100 rounded" title="删除试卷"><Trash2 className="h-4 w-4" /></button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -346,7 +320,7 @@ function CourseDetailView({ user, course, setCurrentView }) {
             </div>
           )}
 
-          {/* Comments Tab (Placeholder) */}
+          {/* Comments Tab */}
           {activeTab === 'comments' && (
              <div className="text-center py-12"><MessageCircle className="h-16 w-16 mx-auto text-gray-300 mb-4" /><h3 className="text-lg font-medium text-gray-900 mb-2">{t('courseDetail.comments.emptyTitle')}</h3><p className="text-gray-500">{t('courseDetail.comments.emptyDescription')}</p></div>
           )}
