@@ -94,7 +94,9 @@ services:
       
       # Performance tuning
       - WORKERS=${WORKERS:-1}
-      
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       # Optional: Mount logs directory
       - ./logs:/app/logs
