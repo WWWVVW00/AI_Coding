@@ -145,7 +145,13 @@ text_splitter = RecursiveCharacterTextSplitter(
 # Prompt template (替换为这个新版本)
 prompt_template = PromptTemplate(
     input_variables=["materials", "num_questions"],
-    template="""You are an expert exam creator. Your task is to generate {num_questions} high-quality exam questions STRICTLY based on the provided "Educational Materials". Do not use any external knowledge.
+    template="""You are an expert exam creator creating questions for a closed-book exam. Your task is to generate {num_questions} high-quality exam questions based on the provided "Educational Materials". Students will NOT have access to these materials during the exam. You must follow these critical rules:
+
+1. Create questions that test students' understanding of the key concepts, NOT their ability to find information
+2. Each question must include all necessary context and definitions needed to answer it
+3. Questions should be answerable based on what students should have learned from the materials
+4. Use concrete examples and specific scenarios to test understanding
+5. For definitions or concepts, incorporate the key elements into the question instead of asking students to recall the exact definition
 
 Educational Materials:
 ---
@@ -153,11 +159,18 @@ Educational Materials:
 ---
 
 For each question, you MUST generate the following five fields in a JSON format:
-1. "question": The question text itself. It must be answerable solely from the provided materials.
-2. "answer": A concise and direct answer to the question, derived directly from the materials.
-3. "explanation": A detailed explanation of why the answer is correct, referencing concepts or sentences from the provided materials. This must be more detailed than the answer.
-4. "difficulty": The difficulty level (must be one of: "easy", "medium", "hard"). "Easy" for direct recall, "Medium" for comprehension, "Hard" for application or synthesis.
-5. "topic": A brief topic or keyword for the question, based on the material's content (e.g., "Statistical Learning", "Web Analytics Process").
+1. "question": The question text itself. Must quote or paraphrase specific content from the materials. Include line numbers or sections if possible.
+2. "answer": A concise answer that directly quotes or closely paraphrases the materials. Must include the specific location or context from where the answer was derived.
+3. "explanation": A detailed explanation that:
+   - Quotes the exact relevant portions of the materials
+   - Explains how the answer is derived from these quotes
+   - Shows the logical connection between the materials and the answer
+   - Must be more detailed than the answer
+4. "difficulty": The difficulty level (must be one of: "easy", "medium", "hard"):
+   - "easy": Direct quotes or fact recall from the materials
+   - "medium": Requires understanding relationships between concepts in the materials
+   - "hard": Requires synthesizing multiple parts of the materials
+5. "topic": A specific topic or concept from the materials, with the section or context where it appears
 
 Format your entire response as a single valid JSON object with a key "questions", which contains a list of question objects. Do not add any text before or after the JSON object.
 
@@ -165,11 +178,11 @@ Example Format:
 {{
   "questions": [
     {{
-      "question": "What is the primary goal of a web analytics process according to the provided text?",
-      "answer": "To analyze campaign Return On Investment (ROI).",
-      "explanation": "The provided material explicitly states that a direct benefit of implementing the web analytics process is the ability for companies to 'analyze campaign Return On Investment (ROI)'. This helps in understanding the effectiveness of marketing efforts.",
-      "difficulty": "easy",
-      "topic": "Benefits of Web Analytics"
+      "question": "A company implements web analytics to track user behavior on their e-commerce website. They collect data on page views, click patterns, and conversion rates. What is the primary business purpose of collecting and analyzing this data?",
+      "answer": "The primary purpose is to analyze campaign Return On Investment (ROI) by measuring how marketing investments translate into tangible business outcomes through systematic data collection and analysis.",
+      "explanation": "This question tests understanding of the core purpose of web analytics in a business context. A strong answer demonstrates knowledge that: 1) Web analytics involves systematic data collection (page views, clicks, etc.), 2) The ultimate goal is ROI analysis, and 3) This connects marketing investments to business outcomes. Students should understand not just what is collected, but why it matters for business decision-making.",
+      "difficulty": "medium",
+      "topic": "Web Analytics Business Application"
     }}
   ]
 }}
