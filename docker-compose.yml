@@ -9,8 +9,6 @@ services:
       MYSQL_DATABASE: study_assistant
       MYSQL_USER: app_user
       MYSQL_PASSWORD: app_password
-    ports:
-      - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./database:/docker-entrypoint-initdb.d
@@ -41,8 +39,6 @@ services:
       - UPLOAD_DIR=./uploads
       - MAX_FILE_SIZE=50MB
       - QUESTION_GENERATOR_URL=http://question-generator:8000
-    ports:
-      - "3001:3001"
     volumes:
       - backend_uploads:/app/uploads
       - backend_logs:/app/logs
@@ -68,7 +64,7 @@ services:
     container_name: study-assistant-frontend
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "8080:8080"
     networks:
       - study-assistant-network
     depends_on:
@@ -83,8 +79,6 @@ services:
     build: 
       context: ./question_generator
       dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
     networks:
       - study-assistant-network
     environment:

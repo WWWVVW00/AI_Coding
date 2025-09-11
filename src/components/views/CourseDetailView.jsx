@@ -208,6 +208,28 @@ function CourseDetailView({ user, course, setCurrentView }) {
     }
   };
 
+  const handleDownloadMaterial = async (materialId) => {
+    try {
+      await materialsAPI.download(materialId);
+    } catch (error) {
+      console.error('下载失败:', error);
+      alert('下载失败: ' + error.message);
+    }
+  };
+
+  const handleDeleteMaterial = async (materialId) => {
+    if (!confirm('确定要删除这个学习资料吗？此操作不可恢复。')) {
+      return;
+    }
+    try {
+      await materialsAPI.delete(materialId);
+      await loadCourseData(); // 重新加载材料列表
+    } catch (error) {
+      console.error('删除失败:', error);
+      alert('删除失败: ' + error.message);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header Navigation */}
@@ -310,7 +332,7 @@ function CourseDetailView({ user, course, setCurrentView }) {
                 </div>
               ) : (
                 <div className="text-center py-4 bg-white rounded-md border">
-                    <p className="text-sm text-gray-500">请先在左侧上传学习资料</p>
+                    <p className="text-sm text-gray-500">请先在学习资料标签页内上传学习资料</p>
                 </div>
               )}
 
@@ -385,6 +407,39 @@ function CourseDetailView({ user, course, setCurrentView }) {
           {/* Materials Tab */}
           {activeTab === 'materials' && (
             <div className="space-y-4">
+              {/* Upload Section */}
+              <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <Upload className="h-5 w-5 text-cityu-orange mr-2" />
+                    <h3 className="text-lg font-medium">上传学习资料</h3>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={isPublicUpload}
+                        onChange={(e) => setIsPublicUpload(e.target.checked)}
+                        className="rounded border-gray-300 text-cityu-orange focus:ring-cityu-orange mr-2"
+                      />
+                      <span className="text-sm text-gray-600">公开分享</span>
+                    </label>
+                    <label className="flex items-center px-4 py-2 bg-cityu-gradient text-white rounded-lg hover:shadow-lg cursor-pointer transition-all">
+                      <Upload className="h-4 w-4 mr-2" />
+                      <span>选择文件</span>
+                      <input
+                        type="file"
+                        multiple
+                        onChange={handleFileUpload}
+                        className="hidden"
+                        accept=".pdf,.txt,.md"
+                      />
+                    </label>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-500 mt-2">支持 PDF、文本格式，最大 10MB</p>
+              </div>
+
               {materials.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {materials.map((material) => (
